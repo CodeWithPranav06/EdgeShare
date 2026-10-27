@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Project data (do not commit large files)
+data/*
+!data/.gitkeep
+storage/results/*
+!storage/results/.gitkeep
+*.log
