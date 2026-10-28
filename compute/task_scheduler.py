@@ -1,21 +1,58 @@
+
 """Schedulers (member B).
 
 Interface: assign(tasks, workers) -> {task_id: worker_id}
-workers: {worker_id: {"cpu_count", "cpu_percent", "free_ram_mb"}}
 """
 
 
 def round_robin(tasks, workers):
+    """Distribute tasks among workers in rotation."""
     ids = list(workers)
-    return {t["task_id"]: ids[i % len(ids)] for i, t in enumerate(tasks)}
+
+    if not ids:
+        return {}
+
+    return {
+        task["task_id"]: ids[i % len(ids)]
+        for i, task in enumerate(tasks)
+    }
 
 
 def resource_weighted(tasks, workers):
-    """TODO: give each worker a share of tasks proportional to its free CPU
-    (cpu_count * (100 - cpu_percent)) and free RAM."""
-    raise NotImplementedError
+    """Distribute tasks according to available CPU and RAM."""
+    ids = list(workers)
+
+    if not ids or not tasks:
+        return {}
+
+    weights = {}
+
+    for worker_id, status in workers.items():
+        cpu_count = max(0, status.get("cpu_count", 0))
+        cpu_percent = min(100, max(0, status.get("cpu_percent", 0)))
+        free_ram = max(0, status.get("free_ram_mb", 0))
+
+        free_cpu = cpu_count * (100 - cpu_percent) / 100
+        weights[worker_id] = free_cpu * free_ram
+
+    if not any(weights.values()):
+        return round_robin(tasks, workers)
+
+    assignments = {}
+    counts = {worker_id: 0 for worker_id in ids}
+
+    for task in tasks:
+        worker_id = max(
+            ids,
+            key=lambda wid: weights[wid] / (counts[wid] + 1)
+        )
+        assignments[task["task_id"]] = worker_id
+        counts[worker_id] += 1
+
+    return assignments
 
 
-# TODO: pull-based queue: workers request the next task when free.
-
-STRATEGIES = {"round_robin": round_robin, "resource_weighted": resource_weighted}
+STRATEGIES = {
+    "round_robin": round_robin,
+    "resource_weighted": resource_weighted,
+}
