@@ -45,9 +45,9 @@ def worker_loop(host, port=config.COORDINATOR_PORT, worker_id="mac-worker"):
                         print(f"[worker] Completed task {task_id}")
 
                     elif msg_type == "ACK":
-                        # The server acknowledged the previous result.
-                        # Ask the server to check for another queued task.
+                        print(f"[worker] Received ACK: {header}")
                         if "task_id" in header:
+                        print("[worker] Requesting next task...")
                             send_msg(sock, {"type": "STATUS"})
 
                     elif msg_type == "ERROR":
