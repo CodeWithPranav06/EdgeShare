@@ -1,48 +1,46 @@
-
-"""Coordinator-side TCP server for EdgeShare."""
 import socket
 import threading
+import time
+
 import config
 from networking.protocol import recv_msg, send_msg
 from compute.coordinator import TaskCoordinator
 from monitoring.resource_monitor import get_status
 
-
-def handle_worker(conn, addr, registry, coordinator, lock):
+def handle_worker(conn, registry, coordinator, lock, first=None):
     worker_id = None
+    header, payload = first if first else (None, None)
+
     try:
         while True:
-            header, payload = recv_msg(conn)
+            if header is None:
+                header, payload = recv_msg(conn)
+
             msg_type = header.get("type")
 
             if msg_type == "REGISTER":
                 worker_id = header["worker_id"]
-                status = get_status()
                 with lock:
                     registry[worker_id] = conn
-                    coordinator.register_worker(worker_id, status)
+                    coordinator.register_worker(worker_id, get_status())
                 send_msg(conn, {"type": "ACK", "worker_id": worker_id})
 
             elif msg_type in ("HEARTBEAT", "STATUS"):
                 if worker_id is None:
                     send_msg(conn, {"type": "ERROR", "reason": "Register first"})
-                    continue
-                status = header.get("status")
-                if status is None:
-                    status = get_status()
-                coordinator.heartbeat(worker_id, status)
-                send_msg(conn, {"type": "ACK", "worker_id": worker_id})
+                else:
+                    coordinator.heartbeat(worker_id, header.get("status") or get_status())
+                    send_msg(conn, {"type": "ACK", "worker_id": worker_id})
 
             elif msg_type == "RESULT":
                 if worker_id is None:
                     send_msg(conn, {"type": "ERROR", "reason": "Register first"})
-                    continue
-                task_id = header.get("task_id")
-                coordinator.complete_task(
-                    worker_id, task_id, payload,
-                    header.get("processing_s", 0)
-                )
-                send_msg(conn, {"type": "ACK", "task_id": task_id})
+                else:
+                    coordinator.complete_task(
+                        worker_id, header.get("task_id"), payload,
+                        header.get("processing_s", 0)
+                    )
+                    send_msg(conn, {"type": "ACK", "task_id": header.get("task_id")})
 
             else:
                 send_msg(conn, {"type": "ERROR", "reason": "Unknown message type"})
@@ -57,15 +55,57 @@ def handle_worker(conn, addr, registry, coordinator, lock):
                         "params": task.get("params", {}),
                     }, task.get("payload", b""))
 
+            header, payload = recv_msg(conn)
+
     except (ConnectionError, OSError, KeyError, ValueError):
         pass
+    finally:
+        conn.close()
+        if worker_id:
+            with lock:
+                registry.pop(worker_id, None)
+
+
+def handle_submitter(conn, coordinator, lock, header, payload):
+    try:
+        task_id = header["task_id"]
+        task = {
+            "task_id": task_id,
+            "task_type": header.get("task_type", "resize"),
+            "params": header.get("params", {}),
+            "payload": payload,
+        }
+
+        with lock:
+            coordinator.submit_tasks([task])
+
+        send_msg(conn, {"type": "ACK", "task_id": task_id})
+
+        deadline = time.time() + 300
+        while time.time() < deadline:
+            with lock:
+                result = coordinator.results.get(task_id)
+
+            if result is not None:
+                send_msg(conn, {
+                    "type": "RESULT",
+                    "task_id": task_id,
+                    "processing_s": result.get("processing_s", 0),
+                }, result["result"])
+                return
+
+            time.sleep(0.2)
+
+        send_msg(conn, {"type": "ERROR", "reason": "Timed out waiting for worker"})
+
+    except (ConnectionError, OSError, KeyError, ValueError) as exc:
+        print(f"[server] submitter error: {exc}")
     finally:
         conn.close()
 
 
 def start_server(host=config.COORDINATOR_HOST, port=config.COORDINATOR_PORT,
                  ready=None, stop=None, registry=None):
-    """Run until stop is set; retain compatibility with the existing tests."""
     registry = registry if registry is not None else {}
     coordinator = TaskCoordinator()
     lock = threading.RLock()
@@ -75,6 +115,7 @@ def start_server(host=config.COORDINATOR_HOST, port=config.COORDINATOR_PORT,
     srv.bind((host, port))
     srv.listen()
     srv.settimeout(0.5)
+
     print(f"[server] listening on {host}:{port}")
     if ready:
         ready.set()
@@ -85,11 +126,22 @@ def start_server(host=config.COORDINATOR_HOST, port=config.COORDINATOR_PORT,
                 conn, addr = srv.accept()
             except socket.timeout:
                 continue
-            threading.Thread(
-                target=handle_worker,
-                args=(conn, addr, registry, coordinator, lock),
-                daemon=True,
-            ).start()
+
+            def dispatch(c=conn):
+                try:
+                    first_header, first_payload = recv_msg(c)
+                    if first_header.get("type") == "SUBMIT":
+                        handle_submitter(c, coordinator, lock, first_header, first_payload)
+                    else:
+                        handle_worker(
+                            c, registry, coordinator, lock,
+                            first=(first_header, first_payload)
+                        )
+                except (ConnectionError, OSError, ValueError):
+                    c.close()
+
+            threading.Thread(target=dispatch, daemon=True).start()
+
     finally:
         srv.close()
 
