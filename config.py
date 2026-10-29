@@ -21,5 +21,7 @@ LOW_BATTERY_PERCENT = 20          # it is on battery (not plugged in) and below 
 MAX_HEADER_BYTES = 1024 * 1024    # reject larger JSON headers (corrupt stream)
 MAX_PAYLOAD_BYTES = 200 * 1024 * 1024   # reject payloads larger than 200 MB
 
+WEB_PORT = 8080                   # web dashboard: http://<coordinator-ip>:8080
+
 RESULTS_CSV = "storage/results/results.csv"
 OUTPUT_DIR = "output"             # where submitted images' results are saved
