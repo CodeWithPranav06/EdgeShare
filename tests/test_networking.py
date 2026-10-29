@@ -118,6 +118,72 @@ def test_malformed_header_is_rejected():
     b.close()
 
 
+# ---- silent connections (Wi-Fi drops packets without an error) --------------------------------
+
+def silent_coordinator():
+    """Accepts one worker, ACKs its REGISTER, then never sends anything again.
+    Returns (port, list that receives the coordinator-side socket)."""
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen()
+    held = []
+
+    def serve():
+        conn, _ = listener.accept()
+        held.append(conn)
+        recv_msg(conn)
+        send_msg(conn, {"type": "ACK"})
+        listener.close()
+
+    threading.Thread(target=serve, daemon=True).start()
+    return listener.getsockname()[1], held
+
+
+def test_worker_gives_up_on_a_silent_coordinator():
+    port, held = silent_coordinator()
+    sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+    session = WorkerSession(sock, "mac", lambda: dict(FAST_STATUS))
+    started = time.monotonic()
+    with pytest.raises(ConnectionError, match="no reply"):
+        session.run(interval=0.1, silence_timeout=0.6)
+    assert time.monotonic() - started < 3
+    assert session.stopped.is_set()
+    for conn in held:
+        conn.close()
+
+
+def test_failed_heartbeat_closes_the_connection():
+    port, held = silent_coordinator()
+    calls = []
+
+    def status():
+        calls.append(1)
+        if len(calls) > 1:                         # REGISTER works, the first heartbeat fails
+            raise OSError("network is unreachable")
+        return dict(FAST_STATUS)
+
+    sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+    session = WorkerSession(sock, "mac", status)
+    started = time.monotonic()
+    with pytest.raises(OSError):
+        session.run(interval=0.1, silence_timeout=30)
+    assert time.monotonic() - started < 3          # did not wait for the 30 s silence limit
+    for conn in held:
+        conn.close()
+
+
+def test_worker_keeps_a_quiet_but_healthy_connection():
+    """The coordinator ACKs heartbeats, so an idle worker is never mistaken for a silent link."""
+    with Server() as server:
+        worker = FakeWorker(server.port, "idle-one", interval=0.1)
+        worker.session.run = lambda interval: WorkerSession.run(worker.session, interval, 0.5)
+        worker.start()
+        assert wait_for(lambda: "idle-one" in server.registry)
+        time.sleep(1.5)                            # three silence limits with no tasks at all
+        assert worker.is_alive() and worker.error is None
+        worker.kill()
+
+
 # ---- registration ---------------------------------------------------------------------------
 
 def test_three_workers_register_at_once():

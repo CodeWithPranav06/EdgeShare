@@ -6,6 +6,11 @@ The worker registers with its resource status and runs tasks one at a time. A se
 heartbeat thread sends HEARTBEAT + fresh status every config.HEARTBEAT_INTERVAL_S, also
 while a long task is running, so the coordinator can tell a slow worker from a dead one.
 If the connection drops, the worker reconnects (with a new heartbeat thread).
+
+Wi-Fi can also lose a connection silently (no error, the packets just stop). The
+coordinator answers every heartbeat, so a worker that hears nothing for
+SILENCE_TIMEOUT_S treats the connection as dead and reconnects, and a heartbeat that
+cannot be sent closes the connection instead of stopping quietly.
 """
 import socket
 import threading
@@ -17,6 +22,7 @@ from monitoring.resource_monitor import get_status
 from networking.protocol import recv_msg, send_msg, sha256_hex, verify_payload
 
 RECONNECT_DELAY_S = 3
+SILENCE_TIMEOUT_S = 2 * config.HEARTBEAT_TIMEOUT_S   # nothing from the coordinator this long = dead
 
 
 class RegistrationRefused(Exception):
@@ -55,8 +61,20 @@ class WorkerSession:
             try:
                 self.send({"type": "HEARTBEAT", "worker_id": self.worker_id,
                            "status": self.status_fn()})
-            except OSError:
-                break                             # the main loop sees the broken socket
+            except OSError as exc:
+                if not self.stopped.is_set():
+                    print(f"[worker] heartbeat could not be sent ({exc}); reconnecting")
+                    self.close()                  # wakes the main loop so it reconnects
+                break
+
+    def close(self):
+        """Close the connection and wake a thread blocked in recv() on it."""
+        self.stopped.set()
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        self.sock.close()
 
     def handle_task(self, header, payload):
         task_id = header.get("task_id")
@@ -74,14 +92,18 @@ class WorkerSession:
                    "sha256": sha256_hex(result)}, result)
         return True
 
-    def run(self, interval=config.HEARTBEAT_INTERVAL_S):
-        """Register, then process tasks until the connection closes."""
+    def run(self, interval=config.HEARTBEAT_INTERVAL_S, silence_timeout=SILENCE_TIMEOUT_S):
+        """Register, then process tasks until the connection closes or goes silent."""
         self.register()
         print(f"[worker] registered as {self.worker_id}")
+        self.sock.settimeout(silence_timeout)
         threading.Thread(target=self.heartbeat_loop, args=(interval,), daemon=True).start()
         try:
             while True:
-                header, payload = recv_msg(self.sock)
+                try:
+                    header, payload = recv_msg(self.sock)
+                except socket.timeout:
+                    raise ConnectionError("no reply from the coordinator for %ss" % silence_timeout)
                 msg_type = header.get("type")
 
                 if msg_type == "TASK":
