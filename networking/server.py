@@ -1,4 +1,3 @@
-```python
 """Coordinator-side TCP server for EdgeShare."""
 import socket
 import threading
@@ -210,4 +209,4 @@ def dispatch_connection(conn, registry, coordinator, lock):
 
 if __name__ == "__main__":
     start_server()
-```
+
