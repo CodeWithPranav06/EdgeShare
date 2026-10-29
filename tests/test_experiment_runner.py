@@ -1,5 +1,5 @@
 """Tests for experiment_runner.py and fault_injection.py.
-Run with:  python -m pytest test_experiment_runner.py
+Run with:  python -m pytest tests/test_experiment_runner.py
 
 The first group needs nothing from the team. The last group runs real experiments through
 Member B's TaskCoordinator and is skipped automatically if it cannot be imported.
@@ -9,10 +9,10 @@ import csv
 
 import pytest
 
-import correctness_check as cc
-import experiment_runner as er
-from baseline_benchmark import HashTask, MatmulTask
-from fault_injection import FaultInjector
+from benchmark import correctness_check as cc
+from benchmark import experiment_runner as er
+from benchmark.baseline_benchmark import HashTask, MatmulTask
+from benchmark.fault_injection import FaultInjector
 
 
 # ---- pieces that do not need the team's code -------------------------------------
@@ -94,6 +94,21 @@ def test_e1_and_e2_rows_are_correct(tmp_path, coordinator_class):
     assert len(rows) == 4                                               # 2 (E1) + 2 (E2)
     assert all(r["Correct"] == cc.PASS for r in rows)
     assert set(rows[0]) == set(er.CSV_FIELDS)
+
+
+def test_rows_reach_team_log_run(tmp_path, monkeypatch, coordinator_class):
+    import config
+    from benchmark import run_experiments
+    monkeypatch.setattr(config, "RESULTS_CSV", str(tmp_path / "team" / "results.csv"))
+    ctx = er.Context(None, str(tmp_path / "no_baseline.csv"), str(tmp_path / "results.csv"),
+                     log_run=run_experiments.log_run)
+    try:
+        er.run_experiment(ctx, coordinator_class, "E1", ["hash"], 1, True, 1)
+    finally:
+        ctx.close()
+    rows = _read(tmp_path / "team" / "results.csv")
+    assert rows and set(rows[0]) == set(run_experiments.COLUMNS)
+    assert rows[0]["experiment"] == "E1" and rows[0]["hash_ok"] == "True"
 
 
 def test_e4_kills_a_worker_and_loses_no_task(tmp_path, coordinator_class):

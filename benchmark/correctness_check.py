@@ -7,7 +7,7 @@ of the merged output the same way and compare. Equal digests = identical results
 
 Use it from the experiment runner:
 
-    from correctness_check import check_output_folder, check_digest
+    from benchmark.correctness_check import check_output_folder, check_digest
 
     # resize: outputs were saved to a folder by the coordinator
     result = check_output_folder("resize", size=100, output_dir="out/run1")
@@ -21,11 +21,11 @@ Use it from the experiment runner:
     print(format_result(result))          # PASS / FAIL / NO_BASELINE
     log_value = result["status"]          # put this in a "Correct" column of results.csv
 
-From the command line:
+From the command line (repo root):
 
-    python correctness_check.py --task resize --size 100 --distributed-dir out/run1
-    python correctness_check.py --task hash --size 64 --digest <hex digest>
-    python correctness_check.py --compare-dirs out/baseline out/run1      # which files differ?
+    python -m benchmark.correctness_check --task resize --size 100 --distributed-dir out/run1
+    python -m benchmark.correctness_check --task hash --size 64 --digest <hex digest>
+    python -m benchmark.correctness_check --compare-dirs out/baseline out/run1      # which files differ?
 
 IMPORTANT for the digest to match:
   * resize : the distributed run must process the SAME first N images (sorted by name),
@@ -40,7 +40,7 @@ import hashlib
 import sys
 from pathlib import Path
 
-import image_processor as ip
+from compute import image_processor as ip
 
 DEFAULT_BASELINE_CSV = "results/baseline_summary.csv"
 

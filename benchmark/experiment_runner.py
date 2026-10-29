@@ -1,10 +1,10 @@
 """
 experiment_runner.py - run experiments E1-E6 (5 repeats each) and fill results.csv.
 
-    python experiment_runner.py --list                          # what each experiment does
-    python experiment_runner.py E2 --images-dir data/images     # one experiment, 5 repeats
-    python experiment_runner.py all --images-dir data/images    # every experiment
-    python experiment_runner.py E1 --quick --images-dir data/images   # tiny smoke test
+    python -m benchmark.experiment_runner --list                          # what each experiment does
+    python -m benchmark.experiment_runner E2 --images-dir data/images     # one experiment, 5 repeats
+    python -m benchmark.experiment_runner all --images-dir data/images    # every experiment
+    python -m benchmark.experiment_runner E1 --quick --images-dir data/images   # tiny smoke test
 
 Each run: build the job -> hand tasks to Member B's TaskCoordinator -> workers pull tasks
 with next_task() and report with complete_task() -> merge the results in order -> compare
@@ -20,7 +20,8 @@ WHERE THE WORKERS RUN
 
 EDIT THESE TWO THINGS TO MATCH THE TEAM
   1. EXPERIMENT_INFO / make_plan(): what E1-E6 really mean in your project plan.
-  2. adapt_row_for_log_run(): convert our row into whatever log_run() expects.
+  2. adapt_row_for_log_run(): maps our row onto the team's COLUMNS; by default every run is
+     also logged through benchmark/run_experiments.py:log_run() to config.RESULTS_CSV.
 """
 
 import argparse
@@ -40,10 +41,10 @@ from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
-import correctness_check as cc
-import image_processor as ip
-from baseline_benchmark import HashTask, MatmulTask, ResizeTask, time_once
-from fault_injection import FaultInjector
+from benchmark import correctness_check as cc
+from benchmark.baseline_benchmark import HashTask, MatmulTask, ResizeTask, time_once
+from benchmark.fault_injection import FaultInjector
+from compute import image_processor as ip
 
 COORDINATOR_MODULES = ["compute.coordinator", "compute.task_coordinator"]
 CHUNK = {"resize": 5, "hash": 8, "matmul": 10}                 # items per task
@@ -95,9 +96,17 @@ def load_log_run(spec):
 
 
 def adapt_row_for_log_run(row):
-    """EDIT ME: turn our row dict into the argument(s) the team's log_run() expects.
-    By default log_run(row) receives the whole dict."""
-    return row
+    """Turn our detailed row into the team's COLUMNS (benchmark/run_experiments.py)."""
+    failed = [w for w in str(row.get("Failed_Workers", "")).split(";") if w]
+    return {
+        "experiment": row["Experiment_ID"], "task_type": row["Task_Type"],
+        "task_size": row["Task_Size"], "nodes": row["Workers"], "scheduler": row["Strategy"],
+        "transfer_s": row["Transfer_Time"], "processing_s": row["Processing_Time"],
+        "merge_s": row["Merge_Time"], "total_s": row["Total_Time"],
+        "throughput": row["Throughput"], "speedup": row["Speedup"],
+        "efficiency": row["Efficiency"], "failures": len(failed),
+        "recovery_s": row["Recovery_Time"], "hash_ok": row["Correct"] == cc.PASS,
+    }
 
 
 # --------------------------------------------------------------------------
@@ -559,7 +568,8 @@ def main(argv=None):
     parser.add_argument("--out", default="results/results.csv")
     parser.add_argument("--baseline-csv", default=cc.DEFAULT_BASELINE_CSV)
     parser.add_argument("--coordinator-module", default=None, help="e.g. compute.coordinator")
-    parser.add_argument("--log-run", default=None, metavar="MODULE:FUNCTION", help="also call the team's log_run()")
+    parser.add_argument("--log-run", default="benchmark.run_experiments:log_run", metavar="MODULE:FUNCTION",
+                        help="also call the team's log_run() (writes config.RESULTS_CSV); 'none' to skip")
     parser.add_argument("--timeout", type=float, default=300.0, help="give up on a run after this many seconds")
     parser.add_argument("--quick", action="store_true", help="tiny sizes and 2 repeats (smoke test)")
     args = parser.parse_args(argv)
@@ -578,7 +588,7 @@ def main(argv=None):
         sys.exit("error: --images-dir is required for the resize task (or use --tasks hash matmul)")
 
     TaskCoordinator = load_task_coordinator(args.coordinator_module)
-    log_run = load_log_run(args.log_run) if args.log_run else None
+    log_run = load_log_run(args.log_run) if args.log_run and args.log_run.lower() != "none" else None
     repeats = 2 if args.quick else args.repeats
 
     ctx = Context(args.images_dir, args.baseline_csv, args.out, log_run)

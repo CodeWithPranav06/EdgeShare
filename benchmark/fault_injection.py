@@ -13,7 +13,7 @@ or press Ctrl+C in its worker window when the banner appears.
 
 Run E4 from the command line (this just calls experiment_runner):
 
-    python fault_injection.py --images-dir data/images --workers 3 --kill-at 0.4 --repeats 5
+    python -m benchmark.fault_injection --images-dir data/images --workers 3 --kill-at 0.4 --repeats 5
 """
 
 import argparse
@@ -71,7 +71,7 @@ def main(argv=None):
     parser.add_argument("--quick", action="store_true")
     args, extra = parser.parse_known_args(argv)
 
-    import experiment_runner                     # imported here to avoid a circular import
+    from benchmark import experiment_runner      # imported here to avoid a circular import
     runner_args = ["E4", "--tasks", args.task, "--workers", str(args.workers),
                    "--kill-at", str(args.kill_at), "--repeats", str(args.repeats)]
     if args.images_dir:

@@ -77,33 +77,56 @@ class RecoveryManager:
             if now - last_seen <= self.heartbeat_timeout:
                 continue
 
-            started = time.monotonic()
-            self.dead_workers.add(worker_id)
+            self.fail_worker(worker_id)
             newly_dead.append(worker_id)
 
-            unfinished = self.worker_tasks.pop(worker_id, [])
-
-            for task in unfinished:
-                task_id = task["task_id"]
-                retries = self.task_retries.get(
-                    task_id, task.get("retries", 0)
-                ) + 1
-                self.task_retries[task_id] = retries
-                task["retries"] = retries
-
-                if retries < self.retry_limit:
-                    self.task_queue.append(task)
-                else:
-                    self.failed_tasks.append(task)
-
-            self.recovery_log.append({
-                "worker_id": worker_id,
-                "recovered_at": time.monotonic(),
-                "duration_s": time.monotonic() - started,
-                "requeued": len(self.task_queue),
-            })
-
         return newly_dead
+
+    def fail_worker(self, worker_id):
+        """Mark a worker dead (timeout or lost connection) and recover its tasks.
+
+        Returns (requeued_tasks, failed_tasks).
+        """
+        started = time.monotonic()
+        self.dead_workers.add(worker_id)
+
+        requeued, failed = [], []
+        for task in self.worker_tasks.pop(worker_id, []):
+            if self._retry(task):
+                requeued.append(task)
+            else:
+                failed.append(task)
+
+        self.recovery_log.append({
+            "worker_id": worker_id,
+            "recovered_at": time.monotonic(),
+            "duration_s": time.monotonic() - started,
+            "requeued": len(self.task_queue),
+        })
+        return requeued, failed
+
+    def fail_task(self, worker_id, task_id):
+        """A worker reported that a task failed. Returns "requeued", "failed",
+        or None when the worker was not running that task."""
+        tasks = self.worker_tasks.get(worker_id, [])
+        for task in tasks:
+            if task["task_id"] == task_id:
+                tasks.remove(task)
+                return "requeued" if self._retry(task) else "failed"
+        return None
+
+    def _retry(self, task):
+        """Count one failure; requeue the task (True) or give up on it (False)."""
+        task_id = task["task_id"]
+        retries = self.task_retries.get(task_id, task.get("retries", 0)) + 1
+        self.task_retries[task_id] = retries
+        task["retries"] = retries
+
+        if retries < self.retry_limit:
+            self.task_queue.append(task)
+            return True
+        self.failed_tasks.append(task)
+        return False
 
     def get_queued_tasks(self):
         """Return a snapshot of queued tasks without removing them."""
