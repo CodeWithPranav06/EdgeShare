@@ -28,4 +28,5 @@ def test_worker_registers_with_coordinator():
 def test_tasks_and_status():
     result, secs = run_task("hash", {}, b"hello")
     assert len(result) == 64 and secs >= 0
-    assert set(get_status()) == {"cpu_count", "cpu_percent", "free_ram_mb"}
+    assert set(get_status()) == {"cpu_count", "cpu_percent", "free_ram_mb",
+                                 "battery_percent", "power_plugged"}
