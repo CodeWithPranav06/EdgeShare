@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EdgeShare — Compute at the Edge</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Italiana&family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@1,500&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #000000;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+body {
+    min-height: 900vh;
+    font-family: 'Outfit', 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: #ffffff;
+    overflow-x: hidden;
+    cursor: none;
+}
+
+* { cursor: none !important; }
+
+::-webkit-scrollbar { display: none; width: 0; }
+
+#webgl {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    outline: none;
+}
+
+/* ---------- cursor ---------- */
+.cursor-inner {
+    position: fixed; top: 0; left: 0;
+    width: 6px; height: 6px;
+    border: 2px solid rgba(255, 255, 255, 1);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9999;
+}
+.cursor-outer {
+    position: fixed; top: 0; left: 0;
+    width: 40px; height: 40px;
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9998;
+    transition: width 0.3s, height 0.3s, background 0.3s;
+}
+.cursor-outer.hover { width: 64px; height: 64px; background: rgba(255, 255, 255, 0.06); }
+
+/* ---------- overlay ---------- */
+.cinematic-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0 60px 40px 60px;
+    box-sizing: border-box;
+}
+
+.main-header {
+    display: flex; justify-content: space-between; align-items: center;
+    width: 100%; z-index: 20;
+    pointer-events: auto;
+    padding: 20px 0;
+}
+.brand { font-size: 14px; font-weight: 600; letter-spacing: 5px; text-transform: uppercase; }
+.header-nav { display: flex; align-items: center; gap: 24px; }
+.nav-link {
+    color: #ffffff; text-decoration: none;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+    font-weight: 500; transition: color 0.3s, opacity 0.3s;
+    opacity: 0.6;
+}
+.nav-link:hover, .nav-link.current { opacity: 1; }
+.nav-dot { width: 3px; height: 3px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; }
+.header-actions { display: flex; align-items: center; gap: 18px; }
+.live-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: #d1d5db;
+}
+.live-pill i {
+    width: 7px; height: 7px; border-radius: 50%; background: #6b7280;
+    box-shadow: 0 0 8px currentColor;
+}
+.live-pill.online i { background: #46d97c; color: #46d97c; animation: pulse 2s infinite; }
+.live-pill.offline i { background: #ff5a4f; color: #ff5a4f; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.contact-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 24px;
+    background: #ffffff; color: #000000;
+    text-decoration: none; border: none;
+    font-family: inherit;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    border-radius: 20px;
+    transition: transform 0.3s, background 0.3s;
+}
+.btn-circle {
+    display: inline-block; width: 6px; height: 6px;
+    border: 1px solid #000000; border-radius: 50%; background: transparent;
+}
+.contact-btn:hover { transform: scale(1.05); background: #f0f0f0; }
+
+/* ---------- slides ---------- */
+.slide { position: absolute; bottom: 12%; pointer-events: none; }
+
+#slide-1 { left: 0; width: 100%; }
+#slide-1 .slide-title { margin-left: 60px; }
+#slide-1 .desc-row { position: relative; display: flex; width: 100%; }
+#slide-1 .col-1 {
+    margin-left: 60px;
+    width: calc(25vw - 60px);
+    max-width: calc(25vw - 60px);
+}
+#slide-1 .col-2 {
+    position: absolute;
+    left: calc(25vw + 40px);
+    width: calc(25vw - 60px);
+    max-width: calc(25vw - 60px);
+}
+#slide-1 .col-3 {
+    position: absolute;
+    left: calc(75vw + 20px);
+    width: calc(25vw - 80px);
+}
+
+#slide-2, #slide-3, #slide-4 { left: 60px; width: calc(50vw - 120px); }
+
+.slide-title {
+    font-family: 'Italiana', 'Didot', 'Bodoni 72', Georgia, serif;
+    font-size: clamp(56px, 8vw, 116px);
+    line-height: 1.0;
+    font-weight: 400;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    color: #fff6ed;
+}
+.slide-desc {
+    font-size: 16px; line-height: 1.7; font-weight: 300;
+    color: #d1d5db; letter-spacing: 0.5px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+                transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    transition-delay: 0.4s;
+}
+.slide.active .slide-desc { opacity: 1; transform: translateY(0); }
+
+.slide-title .char {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(50px);
+    filter: blur(12px);
+    transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+                transform 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+                filter 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.slide.active .slide-title .char { opacity: 1; transform: translateY(0); filter: blur(0); }
+.slide.active { pointer-events: auto; }
+
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; }
+.kpi b {
+    display: block; font-family: 'Italiana', Georgia, serif; font-weight: 400;
+    font-size: 44px; line-height: 1; color: #fff6ed;
+}
+.kpi span { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9ca3af; }
+
+/* ---------- live panels (reveal like the editorial image mask) ---------- */
+.panel {
+    position: fixed;
+    top: 90px; bottom: 40px;
+    right: 60px;
+    width: calc(50vw - 100px);
+    z-index: 12;
+    padding: 22px 24px;
+    background: rgba(5, 5, 7, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: none;
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+    transition: clip-path 1.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
+    scrollbar-width: none;
+}
+.panel.active { clip-path: inset(0 0 0 0); opacity: 1; pointer-events: auto; }
+.panel h3 {
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 600;
+    color: #9ca3af; margin: 0 0 14px;
+    display: flex; justify-content: space-between; gap: 12px;
+}
+.panel h3 + * { margin-bottom: 26px; }
+.muted { color: #9ca3af; font-size: 13px; font-weight: 300; }
+
+.worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.wcard {
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 14px 16px;
+    font-size: 13px; font-weight: 300; color: #d1d5db;
+    display: flex; flex-direction: column; gap: 7px;
+    border-left: 2px solid var(--state, #6b7280);
+}
+.wcard-head { display: flex; justify-content: space-between; align-items: center; }
+.wid { font-weight: 600; color: #fff; font-size: 14px; letter-spacing: 0.5px; word-break: break-all; }
+.badge {
+    font-size: 9px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
+    padding: 3px 8px; border-radius: 10px;
+    color: #000; background: var(--state, #6b7280);
+}
+.meter { display: grid; grid-template-columns: 36px 1fr 40px; align-items: center; gap: 8px; }
+.meter span { font-size: 10px; letter-spacing: 1.5px; color: #9ca3af; }
+.meter b { font-weight: 400; text-align: right; color: #fff; }
+.bar { height: 3px; background: rgba(255, 255, 255, 0.12); }
+.bar i { display: block; height: 100%; background: var(--state, #9ca3af); transition: width 0.6s; }
+.wnote { color: #ffb4ad; font-size: 12px; }
+
+.seis-row { margin-bottom: 14px; }
+.seis-head { display: flex; justify-content: space-between; font-size: 12px; color: #d1d5db; margin-bottom: 4px; }
+.seis-head b { color: #fff; font-weight: 600; }
+.seis-row canvas { width: 100%; height: 64px; display: block; background: rgba(0, 0, 0, 0.35); }
+
+.events { list-style: none; font-size: 12px; font-weight: 300; color: #d1d5db; }
+.events li { padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); display: flex; gap: 12px; }
+.events time { color: #6b7280; flex: none; font-variant-numeric: tabular-nums; }
+.events li.warn { color: #ffb4ad; }
+
+.progress { height: 4px; background: rgba(255, 255, 255, 0.12); margin: 6px 0 10px; }
+.progress i { display: block; height: 100%; background: linear-gradient(90deg, #c8743a, #7fd4ff); width: 0; transition: width 0.6s; }
+.counts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: #d1d5db; }
+.counts b { color: #fff; font-weight: 600; }
+
+.submit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 12px; color: #d1d5db; }
+.submit-row input {
+    width: 70px; padding: 8px 10px; background: transparent; color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25); font-family: inherit; font-size: 13px;
+}
+.ghost-btn {
+    padding: 9px 18px; border: 1px solid rgba(255, 255, 255, 0.4); background: transparent;
+    color: #fff; font-family: inherit; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    border-radius: 18px; transition: background 0.3s;
+}
+.ghost-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
+table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weight: 300; }
+.tasks th {
+    text-align: left; font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    color: #6b7280; font-weight: 600; padding: 6px 8px 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.tasks td { padding: 6px 8px 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #d1d5db; vertical-align: top; }
+.tasks td.state { color: var(--state); font-weight: 600; }
+.tasks td.err { color: #ffb4ad; }
+.uploads a { color: #7fd4ff; text-decoration: none; border-bottom: 1px solid rgba(127, 212, 255, 0.4); }
+
+/* ---------- toasts & drop ---------- */
+.toasts {
+    position: fixed; top: 86px; left: 50%; transform: translateX(-50%);
+    z-index: 50; display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    width: min(520px, calc(100vw - 32px));
+}
+.toast {
+    padding: 12px 16px; font-size: 13px; font-weight: 400;
+    background: rgba(20, 6, 6, 0.85); border: 1px solid rgba(255, 90, 79, 0.5); color: #ffd7d3;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    animation: toast-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast.ok { background: rgba(6, 16, 10, 0.85); border-color: rgba(70, 217, 124, 0.5); color: #d3ffe1; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+
+.drop {
+    position: fixed; inset: 16px; z-index: 60;
+    border: 1.5px dashed rgba(255, 255, 255, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Italiana', Georgia, serif; font-size: clamp(32px, 5vw, 64px); color: #fff6ed;
+    background: rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+[hidden] { display: none !important; }
+
+/* ---------- grid overlay ---------- */
+.story-dashes {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; gap: 12px;
+}
+.story-dash { width: 2px; height: 40px; background: rgba(255, 255, 255, 0.15); border-radius: 2px; }
+.story-dash-fill { width: 100%; height: 0%; background: #ffffff; border-radius: 2px; }
+
+.grid-horizontal-line {
+    position: fixed; top: 70px; left: 0; right: 0;
+    width: 100%; height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+    z-index: 5; pointer-events: none;
+}
+.grid-lines {
+    position: fixed; top: 0; left: 40px; right: 40px;
+    width: calc(100% - 80px); height: 100vh;
+    display: flex; justify-content: space-between;
+    z-index: 5; pointer-events: none;
+}
+.grid-line {
+    position: relative; width: 1px; height: 100%;
+    background: rgba(255, 255, 255, 0.12);
+}
+.grid-line:nth-child(3) { margin-top: 70px; height: calc(100vh - 70px); }
+.grid-dot {
+    position: absolute; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.15);
+}
+
+/* ---------- touch screens & phones ---------- */
+@media (hover: none) {
+    body, * { cursor: auto !important; }
+    .cursor-inner, .cursor-outer { display: none; }
+}
+@media (max-width: 860px) {
+    .cinematic-container { padding: 0 16px 24px; }
+    .header-nav { display: none; }
+    .live-pill span { display: none; }
+    .slide { bottom: 6%; }
+    #slide-1 .slide-title { margin-left: 16px; }
+    #slide-1 .desc-row { flex-direction: column; gap: 12px; }
+    #slide-1 .col-1, #slide-1 .col-2, #slide-1 .col-3 {
+        position: static; margin-left: 16px; width: calc(100vw - 32px); max-width: none;
+    }
+    #slide-1 .col-2 { display: none; }
+    #slide-2, #slide-3, #slide-4 { left: 16px; width: calc(100vw - 32px); }
+    .slide-desc { font-size: 14px; }
+    .panel { left: 16px; right: 16px; width: auto; top: 80px; bottom: 42%; padding: 16px; }
+    .grid-lines { left: 8px; right: 8px; width: calc(100% - 16px); }
+}
+</style>
+</head>
+<body>
+<div class="cursor-inner"></div>
+<div class="cursor-outer"></div>
+
+<div class="cinematic-container">
+  <div class="main-header">
+    <div class="brand">EdgeShare</div>
+    <nav class="header-nav">
+      <a href="#overview" class="nav-link">Overview</a>
+      <span class="nav-dot"></span>
+      <a href="#workers" class="nav-link">Workers</a>
+      <span class="nav-dot"></span>
+      <a href="#heartbeat" class="nav-link">Heartbeat</a>
+      <span class="nav-dot"></span>
+      <a href="#tasks" class="nav-link">Tasks</a>
+    </nav>
+    <div class="header-actions">
+      <div class="live-pill" id="live-pill"><i></i><span id="live-text">connecting…</span></div>
+      <button class="contact-btn" id="submit-btn" type="button">Submit images <span class="btn-circle"></span></button>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-1">
+    <h2 class="slide-title">Compute <br>at the Edge</h2>
+    <div class="desc-row">
+      <p class="slide-desc col-1">One coordinator splits the work. Laptops on the same network pick it up, resize images, and send the results back. No cloud, no server room: just the machines in this room.</p>
+      <p class="slide-desc col-2">Every worker reports its CPU, memory, and battery with a heartbeat every two seconds. The scheduler uses that pulse to decide who gets the next task, and notices when a heart stops.</p>
+      <div class="slide-desc col-3 kpis" id="kpis"></div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-2">
+    <h2 class="slide-title">Live <br>Workers</h2>
+    <p class="slide-desc">Every laptop that joined, as the coordinator sees it right now: idle, busy, unavailable when its CPU, memory, or battery is too low, or failed when it went silent.</p>
+  </div>
+
+  <div class="slide" id="slide-3">
+    <h2 class="slide-title">Heartbeat</h2>
+    <p class="slide-desc">A seismograph for the network. The trace rises with each worker's CPU load, ticks with every heartbeat, and bursts when a task comes back. A flat red line is a worker that stopped answering.</p>
+  </div>
+
+  <div class="slide" id="slide-4">
+    <h2 class="slide-title">Every <br>Task</h2>
+    <p class="slide-desc">Drop images anywhere on this page. They are queued, shared between the workers, retried on another laptop if one fails, and saved on the coordinator.</p>
+  </div>
+</div>
+
+<section class="panel" id="panel-2" aria-label="Workers"><div id="workers-view"></div></section>
+<section class="panel" id="panel-3" aria-label="Heartbeat"><div id="seismo-view"></div><h3>Events</h3><ul class="events" id="events-view"></ul></section>
+<section class="panel" id="panel-4" aria-label="Tasks">
+  <h3><span>Progress</span><span id="progress-text"></span></h3>
+  <div><div class="progress"><i id="progress-bar"></i></div><div class="counts" id="counts-view"></div></div>
+  <h3>Submit</h3>
+  <div class="submit-row">
+    <span>Size</span><input id="size-input" type="number" min="1" max="4096" value="512"><span>px</span>
+    <button class="ghost-btn" id="submit-btn-2" type="button">Choose images</button>
+    <span class="muted" id="output-dir"></span>
+  </div>
+  <div id="uploads-view" class="uploads"></div>
+  <h3>Tasks</h3>
+  <div id="tasks-view"></div>
+</section>
+
+<div class="toasts" id="toasts"></div>
+<div class="drop" id="drop" hidden>Drop images to resize</div>
+<input type="file" id="file-input" accept="image/*" multiple hidden>
+
+<div class="grid-horizontal-line"></div>
+<div class="grid-lines">
+  <div class="grid-line"><div class="grid-dot top"></div><div class="grid-dot bottom"></div></div>
+  <div class="grid-line"><div class="grid-dot top"></div><div class="grid-dot bottom"></div></div>
+  <div class="grid-line"><div class="grid-dot top"></div><div class="grid-dot bottom"></div></div>
+  <div class="grid-line"><div class="grid-dot top"></div><div class="grid-dot bottom"></div></div>
+  <div class="grid-line story-progress-container">
+    <div class="grid-dot top"></div>
+    <div class="grid-dot bottom"></div>
+    <div class="story-dashes">
+      <div class="story-dash"><div class="story-dash-fill" id="dash-fill-1"></div></div>
+      <div class="story-dash"><div class="story-dash-fill" id="dash-fill-2"></div></div>
+      <div class="story-dash"><div class="story-dash-fill" id="dash-fill-3"></div></div>
+      <div class="story-dash"><div class="story-dash-fill" id="dash-fill-4"></div></div>
+    </div>
+  </div>
+</div>
+
+<canvas id="webgl"></canvas>
+
+<!-- Live data, slides, cursor. Plain script: works even if Three.js cannot be downloaded. -->
+<script>
+(function () {
+    "use strict";
+
+    const POLL_MS = 1000;
+    const SAMPLES = 160;               // seismograph points per trace
+    const SAMPLE_RATE = 40;            // samples per second -> 4 s window
+    const STATE_COLOURS = {
+        idle: "#7fd4ff", busy: "#ff8a3d", unavailable: "#f2c14e", failed: "#ff5a4f",
+        pending: "#9ca3af", assigned: "#ff8a3d", running: "#ff8a3d", completed: "#46d97c"
+    };
+    const SLIDE_RANGES = [[-0.10, 0.16], [0.24, 0.46], [0.52, 0.74], [0.80, 1.05]];
+    const NAV_TARGETS = [0.0, 0.34, 0.62, 0.94];
+    const NAV_HASHES = ['#overview', '#workers', '#heartbeat', '#tasks'];
+
+    // Shared with the 3D module.
+    const ES = window.ES = {
+        targetScroll: 0, currentScroll: 0, snapCamera: false,
+        mouseX: 0, mouseY: 0, targetMouseX: 0, targetMouseY: 0,
+        state: null, online: false,
+        signals: {},                   // worker_id -> {buf, state, cpu, ...}
+        order: [],                     // worker ids in registration order
+        colours: STATE_COLOURS
+    };
+
+    let cursorX = window.innerWidth / 2, cursorY = window.innerHeight / 2;
+    let outerCursorX = cursorX, outerCursorY = cursorY;
+    let seenEvents = null;
+    let lastSample = performance.now();
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (value) => String(value == null ? "" : value).replace(/[&<>"']/g,
+        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const fmt = (value, suffix, missing) => value == null ? (missing || "n/a") : value + (suffix || "");
+
+    // ------------------------------------------------------------------ titles
+    function splitTitlesIntoChars() {
+        document.querySelectorAll('.slide-title').forEach(title => {
+            const parts = title.innerHTML.split(/(<br\s*\/?>)/i);
+            let html = '', delay = 0;
+            parts.forEach(part => {
+                if (part.toLowerCase().startsWith('<br')) { html += part; return; }
+                for (const ch of part) {
+                    if (ch === ' ') { html += ' '; continue; }
+                    html += `<span class="char" style="transition-delay: ${delay * 0.035}s">${ch}</span>`;
+                    delay++;
+                }
+            });
+            title.innerHTML = html;
+        });
+    }
+
+    // ---------------------------------------------------------------- polling
+    async function poll() {
+        try {
+            const response = await fetch('/api/state', { cache: 'no-store' });
+            if (!response.ok) throw new Error(response.status);
+            applyState(await response.json());
+            ES.online = true;
+        } catch (err) {
+            ES.online = false;
+        }
+        renderPill();
+        setTimeout(poll, POLL_MS);
+    }
+
+    function signal(id) {
+        if (!ES.signals[id]) {
+            ES.signals[id] = { buf: new Float32Array(SAMPLES), state: 'idle', cpu: 0,
+                               lastSeen: null, done: 0, blip: 0, spike: 0, phase: Math.random() * 6 };
+        }
+        return ES.signals[id];
+    }
+
+    function applyState(state) {
+        ES.state = state;
+        ES.order = state.workers.map(w => w.worker_id);
+        state.workers.forEach(w => {
+            const s = signal(w.worker_id);
+            if (s.lastSeen != null && w.last_seen_s != null && w.last_seen_s < s.lastSeen - 0.05) s.blip = 1;
+            if (w.completed > s.done && s.lastSeen != null) s.spike = 1;
+            s.lastSeen = w.last_seen_s;
+            s.done = w.completed;
+            s.state = w.state;
+            s.cpu = w.cpu_percent || 0;
+        });
+
+        if (seenEvents == null) seenEvents = state.event_count;
+        const unseen = state.event_count - seenEvents;
+        if (unseen > 0) {
+            state.events.slice(-Math.min(unseen, state.events.length))
+                .forEach(([, text, warn]) => { if (warn) toast(text); });
+        }
+        seenEvents = state.event_count;
+
+        renderKpis(state);
+        renderWorkers(state);
+        renderEvents(state);
+        renderTasks(state);
+    }
+
+    // ----------------------------------------------------------------- render
+    function renderPill() {
+        const pill = $('live-pill');
+        pill.classList.toggle('online', ES.online);
+        pill.classList.toggle('offline', !ES.online);
+        const s = ES.state;
+        if (!ES.online) {
+            $('live-text').textContent = 'coordinator offline · retrying';
+        } else if (s) {
+            const live = s.workers.filter(w => w.state !== 'failed').length;
+            $('live-text').textContent = `${live} worker${live === 1 ? '' : 's'} · ${s.counts.completed}/${s.counts.total} done`;
+        }
+    }
+
+    function renderKpis(s) {
+        const live = s.workers.filter(w => w.state !== 'failed').length;
+        const busy = s.workers.filter(w => w.state === 'busy').length;
+        const c = s.coordinator || {};
+        $('kpis').innerHTML = [
+            [live, 'workers online'], [busy, 'busy now'],
+            [s.counts.completed, 'tasks done'], [s.counts.failed, 'tasks failed'],
+        ].map(([n, label]) => `<div class="kpi"><b>${esc(n)}</b><span>${esc(label)}</span></div>`).join('') +
+        `<div class="kpi" style="grid-column: 1 / -1"><span>${esc(s.strategy.replace('_', '-'))} scheduler · ` +
+        `${esc(c.address || '')}:${esc(c.port || '')}</span></div>`;
+    }
+
+    function renderWorkers(s) {
+        if (!s.workers.length) {
+            $('workers-view').innerHTML = `<h3>Workers</h3><p class="muted">No workers yet. On each laptop run:<br>` +
+                `<b>python main.py worker ${esc(s.coordinator ? s.coordinator.address : '<coordinator-ip>')}</b></p>`;
+            return;
+        }
+        const cards = s.workers.map(w => {
+            const colour = STATE_COLOURS[w.state] || '#9ca3af';
+            const cpu = w.cpu_percent == null ? 0 : Math.round(w.cpu_percent);
+            const battery = w.battery_percent == null ? 'No battery'
+                : `Battery ${esc(w.battery_percent)}% · ${w.power_plugged ? 'charging' : 'on battery'}`;
+            return `<div class="wcard" style="--state:${colour}">
+                <div class="wcard-head"><span class="wid">${esc(w.worker_id)}</span><span class="badge">${esc(w.state)}</span></div>
+                <div class="meter"><span>CPU</span><div class="bar"><i style="width:${cpu}%"></i></div><b>${cpu}%</b></div>
+                <div>${esc(fmt(w.cpu_count, ' cores', '? cores'))} · ${w.free_ram_mb == null ? '? MB' : esc(w.free_ram_mb.toLocaleString()) + ' MB'} free</div>
+                <div>${battery}</div>
+                <div>Heartbeat ${w.last_seen_s == null ? '-' : esc(w.last_seen_s.toFixed(1)) + 's ago'} · done ${esc(w.completed)}</div>
+                <div>Task ${w.tasks.length ? esc(w.tasks.join(', ')) : '-'}</div>
+                ${w.reason ? `<div class="wnote">${esc(w.reason)}</div>` : ''}
+            </div>`;
+        }).join('');
+        $('workers-view').innerHTML = `<h3><span>Workers</span><span>${s.workers.length} known</span></h3>` +
+            `<div class="worker-grid">${cards}</div>`;
+    }
+
+    function renderEvents(s) {
+        const c = s.coordinator || {};
+        const rows = s.workers.map(w => `<div class="seis-row">
+            <div class="seis-head"><span><b>${esc(w.worker_id)}</b> · ${esc(w.state)}</span>
+            <span>${w.last_seen_s == null ? '' : 'last beat ' + esc(w.last_seen_s.toFixed(1)) + 's ago'}</span></div>
+            <canvas data-worker="${esc(w.worker_id)}"></canvas></div>`).join('');
+        const view = $('seismo-view');
+        const ids = s.workers.map(w => w.worker_id + w.state).join('|');
+        if (view.dataset.ids !== ids) {          // keep canvases between polls
+            view.dataset.ids = ids;
+            view.innerHTML = `<h3><span>Seismograph</span><span>beat every ${esc(c.heartbeat_interval_s)}s · timeout ${esc(c.heartbeat_timeout_s)}s</span></h3>` +
+                (rows || '<p class="muted">Waiting for the first worker…</p>');
+        } else {
+            view.querySelectorAll('.seis-row').forEach((row, i) => {
+                const w = s.workers[i];
+                row.querySelector('.seis-head span:last-child').textContent =
+                    w.last_seen_s == null ? '' : 'last beat ' + w.last_seen_s.toFixed(1) + 's ago';
+            });
+        }
+        // collapse runs of identical events ("1 task(s) submitted" x 16) so failures stay visible
+        const grouped = [];
+        s.events.slice(-120).forEach(([stamp, text, warn]) => {
+            const last = grouped[grouped.length - 1];
+            if (last && last.text === text) { last.count++; last.stamp = stamp; }
+            else grouped.push({ stamp, text, warn, count: 1 });
+        });
+        $('events-view').innerHTML = grouped.slice(-40).reverse().map(e =>
+            `<li class="${e.warn ? 'warn' : ''}"><time>${new Date(e.stamp * 1000).toLocaleTimeString()}</time>` +
+            `<span>${esc(e.text)}${e.count > 1 ? ' ×' + e.count : ''}</span></li>`
+        ).join('') || '<li class="muted">No events yet.</li>';
+    }
+
+    function renderTasks(s) {
+        const c = s.counts;
+        const finished = c.completed + c.failed;
+        $('progress-bar').style.width = c.total ? (100 * finished / c.total) + '%' : '0';
+        $('progress-text').textContent = c.total ? `${finished}/${c.total}` : '';
+        $('counts-view').innerHTML = [['pending', c.pending], ['running', c.assigned + c.running],
+            ['completed', c.completed], ['failed', c.failed]]
+            .map(([k, v]) => `<span><b>${v}</b> ${k}</span>`).join('');
+        $('output-dir').textContent = s.coordinator ? 'saved on the coordinator in ' + s.coordinator.output_dir : '';
+
+        const uploads = Object.entries(s.uploads || {}).reverse().slice(0, 30);
+        $('uploads-view').innerHTML = uploads.length ? `<h3 style="margin-top:22px">Web uploads</h3><table class="tasks"><tbody>` +
+            uploads.map(([id, u]) => `<tr><td>${esc(u.name)}</td><td>${u.ok
+                ? `<a href="/api/result/${encodeURIComponent(id)}" download>download</a> · ${esc(u.worker_id)}`
+                : u.done ? `<span class="err" style="color:#ffb4ad">${esc(u.error)}</span>` : 'working…'}</td></tr>`).join('') +
+            `</tbody></table>` : '';
+
+        const tasks = s.tasks.slice(-80).reverse();
+        $('tasks-view').innerHTML = tasks.length ? `<table class="tasks"><thead><tr><th>Task</th><th>Image</th><th>State</th>` +
+            `<th>Worker</th><th>Tries</th><th>Time</th></tr></thead><tbody>` + tasks.map(t => `<tr>
+                <td>${esc(t.task_id)}</td><td>${esc(t.name || t.task_type || '')}</td>
+                <td class="state" style="--state:${STATE_COLOURS[t.state] || '#9ca3af'}">${esc(t.state)}</td>
+                <td>${esc(t.worker || '-')}</td><td>${esc(t.attempts)}</td>
+                <td>${t.processing_s == null ? '-' : esc(t.processing_s.toFixed(2)) + 's'}</td></tr>` +
+                (t.error ? `<tr><td></td><td colspan="5" class="err">${esc(t.error)}</td></tr>` : '')).join('') +
+            `</tbody></table>` : '<p class="muted">No tasks yet. Drop images on this page or press “Submit images”.</p>';
+    }
+
+    // --------------------------------------------------------------- signals
+    function sampleSignals(now) {
+        const step = 1000 / SAMPLE_RATE;
+        while (now - lastSample >= step) {
+            lastSample += step;
+            Object.values(ES.signals).forEach(s => {
+                let v = 0;
+                if (s.state !== 'failed') {
+                    s.phase += 1.9;
+                    const load = 0.12 + s.cpu / 100;
+                    v = (Math.random() - 0.5) * 0.35 * load            // tremor follows CPU load
+                      + Math.sin(s.phase) * s.blip * 0.75                // heartbeat tick
+                      + Math.sin(s.phase * 0.7) * s.spike * 1.0;         // task finished
+                    s.blip *= 0.86;
+                    s.spike *= 0.9;
+                }
+                s.buf.copyWithin(0, 1);
+                s.buf[SAMPLES - 1] = Math.max(-1, Math.min(1, v));
+            });
+        }
+        if (now - lastSample > 1000) lastSample = now;                   // tab was hidden
+    }
+
+    function drawSeismographs() {
+        document.querySelectorAll('#seismo-view canvas').forEach(canvas => {
+            const s = ES.signals[canvas.dataset.worker];
+            if (!s) return;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, w, h);
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < w; x += w / 8) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+            ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+            ctx.strokeStyle = STATE_COLOURS[s.state] || '#9ca3af';
+            ctx.lineWidth = 1.6;
+            ctx.shadowColor = ctx.strokeStyle;
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            for (let i = 0; i < SAMPLES; i++) {
+                const x = i / (SAMPLES - 1) * w;
+                const y = h / 2 - s.buf[i] * (h / 2 - 4);
+                i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        });
+    }
+
+    // ---------------------------------------------------------- scroll & UI
+    function updateSlides(scroll) {
+        for (let i = 1; i <= 4; i++) {
+            const fill = $(`dash-fill-${i}`);
+            const progress = Math.max(0, Math.min(1, (scroll - (i - 1) * 0.25) / 0.25));
+            fill.style.height = `${progress * 100}%`;
+        }
+        SLIDE_RANGES.forEach(([start, end], index) => {
+            const active = scroll >= start && scroll <= end;
+            $(`slide-${index + 1}`).classList.toggle('active', active);
+            const panel = $(`panel-${index + 1}`);
+            if (panel) panel.classList.toggle('active', active);
+            document.querySelectorAll('.nav-link')[index].classList.toggle('current', active);
+        });
+    }
+
+    function updateGridDots(scroll) {
+        document.querySelectorAll('.grid-dot').forEach((dot, i) => {
+            const startY = (i * 17) % 80 + 10;
+            let speed = 90 + (i * 55) % 180;
+            if (i % 2 === 0) speed = -speed;
+            let y = startY + scroll * speed;
+            y = ((y % 100) + 100) % 100;
+            dot.style.top = `${y}%`;
+        });
+    }
+
+    function scrollToFraction(fraction) {
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        window.scrollTo({ top: maxScroll * fraction, behavior: 'smooth' });
+        const index = NAV_TARGETS.indexOf(fraction);
+        if (index >= 0) history.replaceState(null, '', NAV_HASHES[index]);
+    }
+
+    function jumpToHash() {
+        // Deep links (http://<coordinator>:8080/#tasks) open that screen directly.
+        const index = NAV_HASHES.indexOf(location.hash.toLowerCase());
+        if (index < 0) return;
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        window.scrollTo(0, maxScroll * NAV_TARGETS[index]);
+        ES.currentScroll = ES.targetScroll = NAV_TARGETS[index];
+        ES.snapCamera = true;
+    }
+
+    function frame(now) {
+        requestAnimationFrame(frame);
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        ES.targetScroll = maxScroll > 0 ? window.scrollY / maxScroll : 0;
+        ES.currentScroll += (ES.targetScroll - ES.currentScroll) * 0.025;
+        ES.mouseX += (ES.targetMouseX - ES.mouseX) * 0.05;
+        ES.mouseY += (ES.targetMouseY - ES.mouseY) * 0.05;
+
+        outerCursorX += (cursorX - outerCursorX) * 0.2;
+        outerCursorY += (cursorY - outerCursorY) * 0.2;
+        const outer = document.querySelector('.cursor-outer');
+        outer.style.left = `${outerCursorX}px`;
+        outer.style.top = `${outerCursorY}px`;
+
+        sampleSignals(now);
+        if ($('panel-3').classList.contains('active')) drawSeismographs();
+        updateSlides(ES.currentScroll);
+        updateGridDots(ES.currentScroll);
+    }
+
+    // --------------------------------------------------------------- submit
+    function toast(text, ok) {
+        const el = document.createElement('div');
+        el.className = 'toast' + (ok ? ' ok' : '');
+        el.textContent = text;
+        $('toasts').appendChild(el);
+        while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
+        setTimeout(() => el.remove(), 6000);
+    }
+
+    async function submitFiles(files) {
+        const images = Array.from(files).filter(f => f.type.startsWith('image/') || /\.(png|jpe?g|bmp|webp|tiff?)$/i.test(f.name));
+        if (!images.length) { toast('No images in that selection'); return; }
+        const size = parseInt($('size-input').value, 10);
+        if (!(size >= 1 && size <= 4096)) { toast('Size must be 1 to 4096 pixels'); return; }
+        let sent = 0;
+        for (const file of images) {
+            try {
+                const response = await fetch(`/api/submit?name=${encodeURIComponent(file.name)}&size=${size}`,
+                                             { method: 'POST', body: file });
+                if (!response.ok) throw new Error((await response.json()).error || response.status);
+                sent++;
+            } catch (err) {
+                toast(`${file.name}: ${err.message || err}`);
+            }
+        }
+        if (sent) {
+            toast(`Submitted ${sent} image${sent === 1 ? '' : 's'} at ${size}×${size}`, true);
+            scrollToFraction(NAV_TARGETS[3]);
+        }
+    }
+
+    function wireUi() {
+        window.addEventListener('mousemove', (event) => {
+            cursorX = event.clientX;
+            cursorY = event.clientY;
+            const inner = document.querySelector('.cursor-inner');
+            inner.style.left = `${cursorX}px`;
+            inner.style.top = `${cursorY}px`;
+            ES.targetMouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            ES.targetMouseY = (event.clientY / window.innerHeight) * 2 - 1;
+            const interactive = event.target.closest && event.target.closest('a, button, input');
+            document.querySelector('.cursor-outer').classList.toggle('hover', !!interactive);
+        });
+
+        document.querySelectorAll('.nav-link').forEach((link, index) => {
+            link.addEventListener('click', (e) => { e.preventDefault(); scrollToFraction(NAV_TARGETS[index]); });
+        });
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            const index = ['1', '2', '3', '4'].indexOf(e.key);
+            if (index >= 0) scrollToFraction(NAV_TARGETS[index]);
+        });
+
+        const input = $('file-input');
+        $('submit-btn').addEventListener('click', () => input.click());
+        $('submit-btn-2').addEventListener('click', () => input.click());
+        input.addEventListener('change', () => { submitFiles(input.files); input.value = ''; });
+
+        let dragDepth = 0;
+        window.addEventListener('dragenter', (e) => { e.preventDefault(); dragDepth++; $('drop').hidden = false; });
+        window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('drop').hidden = true; } });
+        window.addEventListener('dragover', (e) => e.preventDefault());
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDepth = 0;
+            $('drop').hidden = true;
+            if (e.dataTransfer && e.dataTransfer.files.length) submitFiles(e.dataTransfer.files);
+        });
+    }
+
+    splitTitlesIntoChars();
+    wireUi();
+    jumpToHash();
+    window.addEventListener('hashchange', jumpToHash);
+    requestAnimationFrame(frame);
+    poll();
+})();
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<!-- 3D: a bronze CPU chip whose lid carries a live seismograph, one trace per worker. -->
+<script type="module">
+import * as THREE from 'three';
+
+const ES = window.ES;
+const canvas = document.querySelector('#webgl');
+const clock = new THREE.Clock();
+const sizes = { width: window.innerWidth, height: window.innerHeight };
+const LANE_SAMPLES = 160;
+const MAX_LANES = 6;
+const MAX_NODES = 8;
+
+let scene, camera, renderer, chipPivot, boardMaterial, lidTexture, lidCanvas;
+let lanes = [], nodes = [], laneKey = '';
+let lastState = null;
+let sparkParticles;
+const sparkCount = 450;
+const sparkData = [];
+
+const shaderUniforms = {
+    uTime: { value: 0 },
+    uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+    uMouse: { value: new THREE.Vector2(0, 0) },
+    uScroll: { value: 0 }
+};
+
+// ------------------------------------------------------------------ scene
+scene = new THREE.Scene();
+scene.background = new THREE.Color('#000000');
+scene.fog = new THREE.FogExp2('#000000', 0.01);
+
+camera = new THREE.PerspectiveCamera(50, sizes.width / sizes.height, 0.1, 100);
+camera.position.set(0, 1.2, 3.6);
+scene.add(camera);
+
+createBackgroundShader();
+
+renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 2.2;
+
+// chiaroscuro lighting
+scene.add(new THREE.AmbientLight('#ffffff', 0.1));
+const keyLight = new THREE.SpotLight('#ffffff', 18.0);
+keyLight.position.set(4, 6, 3);
+keyLight.angle = Math.PI / 4;
+keyLight.penumbra = 0.9;
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 2048;
+keyLight.shadow.mapSize.height = 2048;
+keyLight.shadow.camera.near = 1.0;
+keyLight.shadow.camera.far = 15;
+keyLight.shadow.bias = -0.001;
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight('#e3f2ff', 10.0);
+rimLight.position.set(-5, 3, -4);
+scene.add(rimLight);
+const fillLight = new THREE.DirectionalLight('#fff3e6', 0.8);
+fillLight.position.set(-2, -4, 2);
+scene.add(fillLight);
+
+createSparks();
+createChip();
+window.addEventListener('resize', onWindowResize);
+animate();
+
+// ------------------------------------------------------------------- chip
+function seeded(seed) {
+    return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+}
+
+function traceTexture() {
+    // Copper traces running from the package to the board edges.
+    const c = document.createElement('canvas');
+    c.width = c.height = 1024;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 1024, 1024);
+    const rnd = seeded(7);
+    ctx.lineCap = 'round';
+    for (let side = 0; side < 4; side++) {
+        for (let i = 0; i < 22; i++) {
+            const t = (i + 0.5) / 22;
+            let x = 512 + (t - 0.5) * 460, y = 512 - 250;
+            const pts = [[x, y]];
+            y -= 30 + rnd() * 50; pts.push([x, y]);
+            const bend = (rnd() - 0.5) * 220;
+            x += bend; y -= Math.abs(bend); pts.push([x, y]);
+            y = 20 + rnd() * 60; pts.push([x, y]);
+            ctx.save();
+            ctx.translate(512, 512); ctx.rotate(side * Math.PI / 2); ctx.translate(-512, -512);
+            ctx.strokeStyle = `rgba(255, ${150 + rnd() * 60 | 0}, 90, ${0.55 + rnd() * 0.45})`;
+            ctx.lineWidth = 2 + rnd() * 3;
+            ctx.beginPath();
+            pts.forEach(([px, py], k) => k ? ctx.lineTo(px, py) : ctx.moveTo(px, py));
+            ctx.stroke();
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath(); ctx.arc(pts[3][0], pts[3][1], 5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    return tex;
+}
+
+function drawLid(workers, strategy) {
+    // Engraved lid: brand, lane grooves and worker labels for the seismograph.
+    const ctx = lidCanvas.getContext('2d');
+    ctx.fillStyle = '#d9d2c8';
+    ctx.fillRect(0, 0, 1024, 1024);
+    const grain = ctx.createLinearGradient(0, 0, 1024, 1024);
+    grain.addColorStop(0, 'rgba(255,255,255,0.10)');
+    grain.addColorStop(1, 'rgba(0,0,0,0.12)');
+    ctx.fillStyle = grain;
+    ctx.fillRect(0, 0, 1024, 1024);
+    ctx.fillStyle = '#5a4a3c';
+    ctx.font = '600 64px Outfit, Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('EDGESHARE', 90, 150);
+    ctx.font = '300 26px Outfit, Helvetica, Arial, sans-serif';
+    ctx.fillText(`E-1  DISTRIBUTED CORE  ·  ${(strategy || '').replace('_', '-').toUpperCase()}`, 92, 196);
+    ctx.font = '600 22px Outfit, Helvetica, Arial, sans-serif';
+    const ids = workers.length ? workers : ['WAITING FOR WORKERS'];
+    ids.forEach((id, i) => {
+        const z = laneZ(i, ids.length);
+        const y = (z + 0.65) / 1.3 * 1024;
+        ctx.fillStyle = 'rgba(90,74,60,0.45)';
+        ctx.fillRect(250, y - 1, 700, 2);
+        ctx.fillStyle = '#5a4a3c';
+        ctx.fillText(String(id).slice(0, 14).toUpperCase(), 70, y + 8);
+    });
+    ctx.fillStyle = 'rgba(90,74,60,0.6)';
+    ctx.fillRect(90, 930, 844, 2);
+    ctx.font = '300 20px Outfit, Helvetica, Arial, sans-serif';
+    ctx.fillText('HEARTBEAT SEISMOGRAPH  ·  TRACE = CPU LOAD  ·  TICK = HEARTBEAT', 92, 965);
+    lidTexture.needsUpdate = true;
+}
+
+function laneZ(i, count) {
+    const top = -0.30, bottom = 0.42;
+    return count <= 1 ? 0.06 : top + (bottom - top) * i / (count - 1);
+}
+
+function createChip() {
+    chipPivot = new THREE.Group();
+    chipPivot.position.y = -0.35;
+    scene.add(chipPivot);
+
+    // circuit board
+    const traces = traceTexture();
+    boardMaterial = new THREE.MeshStandardMaterial({
+        color: '#0b100e', roughness: 0.55, metalness: 0.4,
+        emissive: '#ff6a1f', emissiveMap: traces, emissiveIntensity: 0.35
+    });
+    const board = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.08, 3.5), boardMaterial);
+    board.receiveShadow = true;
+    chipPivot.add(board);
+
+    // package substrate
+    const substrate = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.1, 1.7),
+        new THREE.MeshStandardMaterial({ color: '#163322', roughness: 0.5, metalness: 0.3 }));
+    substrate.position.y = 0.09;
+    substrate.castShadow = substrate.receiveShadow = true;
+    chipPivot.add(substrate);
+
+    // gold leads on all four sides
+    const leadGeo = new THREE.BoxGeometry(0.035, 0.025, 0.18);
+    const gold = new THREE.MeshStandardMaterial({ color: '#d9a55a', roughness: 0.28, metalness: 1.0 });
+    const leads = new THREE.InstancedMesh(leadGeo, gold, 18 * 4);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1);
+    let n = 0;
+    for (let side = 0; side < 4; side++) {
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), side * Math.PI / 2);
+        for (let i = 0; i < 18; i++) {
+            const p = new THREE.Vector3(-0.72 + i * (1.44 / 17), 0.055, 0.94).applyQuaternion(q);
+            leads.setMatrixAt(n++, m.compose(p, q, s));
+        }
+    }
+    leads.castShadow = true;
+    chipPivot.add(leads);
+
+    // SMD capacitors scattered on the board
+    const rnd = seeded(3);
+    const capGeo = new THREE.BoxGeometry(0.07, 0.045, 0.13);
+    const caps = new THREE.InstancedMesh(capGeo,
+        new THREE.MeshStandardMaterial({ color: '#8a6a4a', roughness: 0.4, metalness: 0.7 }), 28);
+    for (let i = 0; i < 28; i++) {
+        const angle = rnd() * Math.PI * 2, radius = 1.15 + rnd() * 0.5;
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.round(rnd()) * Math.PI / 2);
+        caps.setMatrixAt(i, m.compose(new THREE.Vector3(Math.cos(angle) * radius, 0.06, Math.sin(angle) * radius), q, s));
+    }
+    caps.castShadow = true;
+    chipPivot.add(caps);
+
+    // bronze heat spreader (rounded, engraved)
+    const shape = new THREE.Shape();
+    const h = 0.65, r = 0.08;
+    shape.moveTo(-h + r, -h);
+    shape.lineTo(h - r, -h); shape.quadraticCurveTo(h, -h, h, -h + r);
+    shape.lineTo(h, h - r); shape.quadraticCurveTo(h, h, h - r, h);
+    shape.lineTo(-h + r, h); shape.quadraticCurveTo(-h, h, -h, h - r);
+    shape.lineTo(-h, -h + r); shape.quadraticCurveTo(-h, -h, -h + r, -h);
+    const lidGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.02,
+                                                      bevelSize: 0.02, bevelSegments: 4, curveSegments: 8 });
+    lidCanvas = document.createElement('canvas');
+    lidCanvas.width = lidCanvas.height = 1024;
+    lidTexture = new THREE.CanvasTexture(lidCanvas);
+    lidTexture.colorSpace = THREE.SRGBColorSpace;
+    lidTexture.anisotropy = 16;
+    lidTexture.repeat.set(1 / 1.3, 1 / 1.3);
+    lidTexture.offset.set(0.5, 0.5);
+    drawLid([], 'resource_weighted');
+    const lid = new THREE.Mesh(lidGeo, new THREE.MeshStandardMaterial({
+        color: '#c98b55', map: lidTexture, roughness: 0.42, metalness: 0.92, flatShading: false
+    }));
+    lid.rotation.x = -Math.PI / 2;
+    lid.position.y = 0.16;
+    lid.castShadow = lid.receiveShadow = true;
+    chipPivot.add(lid);
+}
+
+function makeLane() {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(LANE_SAMPLES * 2 * 3), 3));
+    const index = [];
+    for (let i = 0; i < LANE_SAMPLES - 1; i++) {
+        const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+        index.push(a, b, c, b, d, c);
+    }
+    geometry.setIndex(index);
+    // normal blending: additive light on the bright bronze lid would wash every colour to white
+    const material = new THREE.MeshBasicMaterial({ color: '#7fd4ff', side: THREE.DoubleSide,
+        toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const mesh = new THREE.Mesh(geometry, material);
+    chipPivot.add(mesh);
+    return mesh;
+}
+
+function makeNode() {
+    const group = new THREE.Group();
+    const cube = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.16),
+        new THREE.MeshStandardMaterial({ color: '#111', roughness: 0.3, metalness: 0.8,
+                                         emissive: '#7fd4ff', emissiveIntensity: 1.2 }));
+    cube.castShadow = true;
+    group.add(cube);
+    const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+    const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: '#7fd4ff', transparent: true,
+        opacity: 0.5, blending: THREE.AdditiveBlending, toneMapped: false }));
+    const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 12),
+        new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }));
+    chipPivot.add(group, line, pulse);
+    return { group, cube, line, pulse, offset: Math.random() };
+}
+
+function syncWorkers(state) {
+    const workers = state ? state.workers : [];
+    const ids = workers.map(w => w.worker_id).slice(0, MAX_LANES);
+    const key = ids.join('|') + '#' + (state ? state.strategy : '');
+    if (key !== laneKey) {
+        laneKey = key;
+        drawLid(ids, state ? state.strategy : '');
+    }
+    const laneCount = Math.max(1, ids.length);
+    while (lanes.length < laneCount) lanes.push(makeLane());
+    lanes.forEach((lane, i) => { lane.visible = i < laneCount; });
+
+    const nodeCount = Math.min(workers.length, MAX_NODES);
+    while (nodes.length < nodeCount) nodes.push(makeNode());
+    nodes.forEach((node, i) => {
+        const visible = i < nodeCount;
+        node.group.visible = node.line.visible = node.pulse.visible = visible;
+        if (!visible) return;
+        const angle = (i / nodeCount) * Math.PI * 2 + Math.PI / 4;
+        node.group.position.set(Math.cos(angle) * 1.5, 0.1, Math.sin(angle) * 1.5);
+        const edge = new THREE.Vector3(Math.cos(angle) * 0.95, 0.1, Math.sin(angle) * 0.95);
+        node.line.geometry.setFromPoints([node.group.position.clone(), edge]);
+        node.edge = edge;
+        node.worker = workers[i];
+    });
+}
+
+function updateLanes(time) {
+    const top = 0.16 + 0.12 + 0.02 + 0.006;
+    const ids = ES.order.slice(0, MAX_LANES);
+    const count = Math.max(1, ids.length);
+    lanes.forEach((lane, li) => {
+        if (li >= count) return;
+        const signal = ES.signals[ids[li]];
+        const colour = ES.colours[signal ? signal.state : 'pending'] || '#9ca3af';
+        lane.material.color.set(colour);
+        const pos = lane.geometry.attributes.position.array;
+        const z = laneZ(li, count);
+        const dx = 0.98 / (LANE_SAMPLES - 1);
+        const value = (i) => {
+            i = Math.max(0, Math.min(LANE_SAMPLES - 1, i));
+            return signal ? signal.buf[i] : Math.sin(time * 2 + i * 0.2) * 0.04;
+        };
+        for (let i = 0; i < LANE_SAMPLES; i++) {
+            // the pen draws across the lid; the ribbon is offset along its normal so
+            // steep spikes keep the same thickness as flat parts
+            const x = -0.42 + dx * i;
+            const zi = z - value(i) * 0.075;
+            const slope = -(value(i + 1) - value(i - 1)) * 0.075 / (2 * dx);
+            const length = Math.hypot(slope, 1);
+            const nx = -slope / length * 0.006, nz = 1 / length * 0.006;
+            const k = i * 6;
+            pos[k] = x - nx; pos[k + 1] = top; pos[k + 2] = zi - nz;
+            pos[k + 3] = x + nx; pos[k + 4] = top; pos[k + 5] = zi + nz;
+        }
+        lane.geometry.attributes.position.needsUpdate = true;
+        lane.geometry.computeBoundingSphere();
+    });
+}
+
+function updateNodes(time) {
+    nodes.forEach(node => {
+        if (!node.group.visible || !node.worker) return;
+        const state = node.worker.state;
+        const colour = ES.colours[state] || '#9ca3af';
+        node.cube.material.emissive.set(colour);
+        node.cube.material.emissiveIntensity = state === 'failed' ? 0.6 + 0.6 * (Math.sin(time * 8) > 0) : 1.4;
+        node.line.material.color.set(colour);
+        node.line.material.opacity = state === 'failed' ? 0.15 : 0.55;
+        // pulses travel to the chip while a worker is busy, and pause when idle
+        const busy = state === 'busy';
+        node.pulse.visible = busy;
+        if (busy) {
+            const t = (time * 0.8 + node.offset) % 1;
+            node.pulse.position.lerpVectors(node.group.position, node.edge, t);
+        }
+        node.group.position.y = 0.1 + Math.sin(time * 1.5 + node.offset * 6) * 0.015;
+    });
+}
+
+// ---------------------------------------------------------------- sparks
+function createSparkTexture() {
+    const c = document.createElement('canvas');
+    c.width = 16; c.height = 16;
+    const ctx = c.getContext('2d');
+    const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.85)');
+    gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.3)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 16, 16);
+    return new THREE.CanvasTexture(c);
+}
+
+function createSparks() {
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(sparkCount * 3);
+    const colors = new Float32Array(sparkCount * 3);
+    for (let i = 0; i < sparkCount; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 6.5;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * 5.0 - 0.5;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 6.5;
+        if (Math.random() < 0.6) {
+            colors[i * 3] = 1.0;
+            colors[i * 3 + 1] = 0.4 + Math.random() * 0.15;
+            colors[i * 3 + 2] = 0.05 + Math.random() * 0.1;
+        } else {
+            colors[i * 3] = 0.55 + Math.random() * 0.15;
+            colors[i * 3 + 1] = 0.82 + Math.random() * 0.12;
+            colors[i * 3 + 2] = 1.0;
+        }
+        sparkData.push({
+            speedX: (Math.random() - 0.5) * 0.4,
+            speedY: 0.15 + Math.random() * 0.3,
+            speedZ: (Math.random() - 0.5) * 0.4,
+            swaySpeed: 0.5 + Math.random() * 1.5,
+            swayRadius: 0.05 + Math.random() * 0.15,
+            phase: Math.random() * Math.PI * 2
+        });
+    }
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    sparkParticles = new THREE.Points(geometry, new THREE.PointsMaterial({
+        size: 0.025, vertexColors: true, transparent: true, opacity: 0.85,
+        blending: THREE.AdditiveBlending, depthWrite: false, map: createSparkTexture()
+    }));
+    scene.add(sparkParticles);
+}
+
+// -------------------------------------------------- liquid-bronze backdrop
+function createBackgroundShader() {
+    const vertexShader = `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `;
+    const fragmentShader = `
+        varying vec2 vUv;
+        uniform float uTime;
+        uniform vec2 uResolution;
+        uniform vec2 uMouse;
+        uniform float uScroll;
+
+        float hash(float n) { return fract(sin(n) * 43758.5453123); }
+        float noise(in vec3 x) {
+            vec3 p = floor(x);
+            vec3 f = fract(x);
+            f = f*f*(3.0-2.0*f);
+            float n = p.x + p.y*57.0 + 113.0*p.z;
+            return mix(mix(mix(hash(n+  0.0), hash(n+  1.0), f.x),
+                           mix(hash(n+ 57.0), hash(n+ 58.0), f.x), f.y),
+                       mix(mix(hash(n+113.0), hash(n+114.0), f.x),
+                           mix(hash(n+170.0), hash(n+171.0), f.x), f.y), f.z);
+        }
+
+        void main() {
+            vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution.xy) / uResolution.y;
+            float aspect = uResolution.x / uResolution.y;
+            float time = uTime * 0.08;
+            float scroll = uScroll;
+
+            float angle1 = 0.6;
+            float angle2 = -0.7;
+            float angle3 = 1.2;
+            float freq1 = 2.4;
+            float freq2 = 3.2;
+            float freq3 = 4.0;
+
+            vec2 warpedUv = uv;
+            float scrollDeform = scroll * 5.0;
+            warpedUv.x += sin(uv.y * 2.5 + time * 0.2 + scrollDeform) * 0.35;
+            warpedUv.y += cos(uv.x * 2.5 - time * 0.15 - scrollDeform * 0.8) * 0.35;
+            warpedUv.x += sin(uv.y * 1.2 - time * 0.1 - scrollDeform * 1.5) * 0.25;
+            warpedUv.y += cos(uv.x * 1.2 + time * 0.18 + scrollDeform * 1.2) * 0.25;
+
+            vec2 scrollDrift = vec2(scroll * 0.04, -scroll * 0.02);
+            vec2 mouseShift = vec2(uMouse.x * aspect * 0.05, uMouse.y * 0.05);
+            warpedUv += scrollDrift + mouseShift;
+
+            vec2 dir1 = vec2(cos(angle1), sin(angle1));
+            vec2 dir2 = vec2(cos(angle2), sin(angle2));
+            vec2 dir3 = vec2(cos(angle3), sin(angle3));
+
+            float w1 = sin(dot(warpedUv, dir1) * freq1 + time * 1.0);
+            float w2 = cos(dot(warpedUv, dir2) * freq2 - time * 1.4 + w1 * 0.4);
+            float w3 = sin(dot(warpedUv, dir3) * freq3 + time * 1.8 + w2 * 0.5);
+            float waveField = w1 * 0.50 + w2 * 0.35 + w3 * 0.15;
+
+            float wideSheen = pow(max(0.0, 1.0 - abs(waveField - 0.1)), 2.5);
+            float crispSpecular = pow(max(0.0, 1.0 - abs(waveField - 0.15)), 8.0);
+            float crest = wideSheen * 0.5 + crispSpecular * 0.9;
+
+            vec3 c0_shadow = vec3(0.0010, 0.0006, 0.0004);
+            vec3 c0_wave1  = vec3(0.085, 0.040, 0.015);
+            vec3 c0_wave2  = vec3(0.050, 0.022, 0.008);
+            vec3 c0_crest  = vec3(0.45, 0.30, 0.18);
+
+            vec3 c1_shadow = vec3(0.0004, 0.0006, 0.0012);
+            vec3 c1_wave1  = vec3(0.015, 0.035, 0.065);
+            vec3 c1_wave2  = vec3(0.008, 0.020, 0.045);
+            vec3 c1_crest  = vec3(0.18, 0.35, 0.55);
+
+            float t = smoothstep(0.0, 1.0, scroll);
+            vec3 colShadow = mix(c0_shadow, c1_shadow, t);
+            vec3 colWave1  = mix(c0_wave1, c1_wave1, t);
+            vec3 colWave2  = mix(c0_wave2, c1_wave2, t);
+            vec3 colCrest  = mix(c0_crest, c1_crest, t);
+
+            vec3 color = colShadow;
+            color = mix(color, colWave2, smoothstep(-0.6, 0.2, waveField));
+            color = mix(color, colWave1, smoothstep(0.0, 0.8, waveField));
+            color += colCrest * crest * 1.4;
+
+            float vignette = 1.0 - dot(uv, uv) * 0.12;
+            color *= vignette;
+
+            gl_FragColor = vec4(color, 1.0);
+        }
+    `;
+    const bgMaterial = new THREE.ShaderMaterial({
+        vertexShader, fragmentShader, uniforms: shaderUniforms, depthWrite: false, depthTest: false
+    });
+    const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), bgMaterial);
+    bgMesh.position.set(0.0, 0.0, -8.0);
+    bgMesh.renderOrder = -10;
+    camera.add(bgMesh);
+}
+
+function onWindowResize() {
+    sizes.width = window.innerWidth;
+    sizes.height = window.innerHeight;
+    camera.aspect = sizes.width / sizes.height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(sizes.width, sizes.height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    shaderUniforms.uResolution.value.set(sizes.width, sizes.height);
+}
+
+// ------------------------------------------------------------------ loop
+function animate() {
+    requestAnimationFrame(animate);
+    const deltaTime = Math.min(clock.getDelta(), 0.1);
+    const time = clock.getElapsedTime();
+    const scroll = ES.currentScroll;
+    const state = ES.state;
+
+    if (state !== lastState) { lastState = state; syncWorkers(state); }
+    updateLanes(time);
+    updateNodes(time);
+
+    // gentle tilt from the mouse
+    chipPivot.rotation.y = ES.mouseX * 0.25;
+    chipPivot.rotation.x = ES.mouseY * 0.1;
+
+    // the board glows brighter the more workers are busy
+    const busy = state ? state.workers.filter(w => w.state === 'busy').length : 0;
+    boardMaterial.emissiveIntensity = 0.3 + Math.min(busy, 4) * 0.12 + Math.sin(time * 1.3) * 0.05;
+
+    // sparks: faster on fast scroll and while tasks are running
+    const positions = sparkParticles.geometry.attributes.position.array;
+    const scrollVelocity = Math.abs(ES.targetScroll - scroll);
+    const speedMultiplier = 1.0 + scrollVelocity * 9.0 + busy * 0.35;
+    const turbulence = scrollVelocity * 0.8;
+    for (let i = 0; i < sparkCount; i++) {
+        const idx = i * 3, data = sparkData[i];
+        positions[idx]     += data.speedX * deltaTime * speedMultiplier;
+        positions[idx + 1] += data.speedY * deltaTime * speedMultiplier;
+        positions[idx + 2] += data.speedZ * deltaTime * speedMultiplier;
+        const sway = data.swayRadius * (1.0 + turbulence * 4.0);
+        positions[idx]     += Math.sin(time * data.swaySpeed + data.phase) * sway * deltaTime;
+        positions[idx + 2] += Math.cos(time * data.swaySpeed + data.phase) * sway * deltaTime;
+        if (positions[idx + 1] > 3.0 || Math.abs(positions[idx]) > 3.5 || Math.abs(positions[idx + 2]) > 3.5) {
+            positions[idx + 1] = -2.5;
+            positions[idx]     = (Math.random() - 0.5) * 3.0;
+            positions[idx + 2] = (Math.random() - 0.5) * 3.0;
+        }
+    }
+    sparkParticles.geometry.attributes.position.needsUpdate = true;
+
+    // camera orbits the chip 360 degrees with the scroll, looking down on the board
+    const phi = scroll * Math.PI * 2.0;
+    const lift = Math.sin(scroll * Math.PI);
+    const y = 1.25 + lift * 0.7;
+    const radius = 3.9 - lift * 0.5;
+    const targetPos = new THREE.Vector3(radius * Math.sin(phi), y, radius * Math.cos(phi));
+    if (ES.snapCamera) { camera.position.copy(targetPos); ES.snapCamera = false; }
+    camera.position.lerp(targetPos, 0.025);
+
+    // first screen: chip on the right of the text columns; data screens: chip on the left of the panel
+    const narrow = sizes.width < 860;
+    const toPanels = Math.min(1, Math.max(0, (scroll - 0.12) / 0.14));
+    const ease = (1 - Math.cos(toPanels * Math.PI)) * 0.5;
+    const offset = narrow ? 0 : -0.9 + 1.7 * ease;
+    const right = new THREE.Vector3(Math.cos(phi), 0, -Math.sin(phi));
+    const lookAt = new THREE.Vector3(0, narrow ? -0.6 : -0.2, 0).addScaledVector(right, offset);
+    camera.lookAt(lookAt);
+
+    shaderUniforms.uTime.value = time;
+    shaderUniforms.uMouse.value.set(ES.mouseX, -ES.mouseY);
+    shaderUniforms.uScroll.value = scroll;
+
+    renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>

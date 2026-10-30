@@ -59,10 +59,26 @@ def submit_image(image_path, task_id, host="127.0.0.1", port=config.COORDINATOR_
     """Send one image and wait for the resized result. Never raises: returns a dict
     with ok, output, worker_id, processing_s, sha256, error."""
     image_path = Path(image_path)
-    report = {"image": str(image_path), "task_id": task_id, "ok": False, "output": None,
-              "worker_id": None, "processing_s": None, "sha256": None, "error": None}
     try:
         data = image_path.read_bytes()
+    except OSError as exc:
+        return {"image": str(image_path), "task_id": task_id, "ok": False, "output": None,
+                "worker_id": None, "processing_s": None, "sha256": None,
+                "error": "%s: %s" % (type(exc).__name__, exc)}
+    report = submit_bytes(data, image_path.name, task_id, host, port, width, height,
+                          out_dir, timeout)
+    report["image"] = str(image_path)
+    return report
+
+
+def submit_bytes(data, name, task_id, host="127.0.0.1", port=config.COORDINATOR_PORT,
+                 width=DEFAULT_SIZE, height=DEFAULT_SIZE, out_dir=config.OUTPUT_DIR,
+                 timeout=SUBMIT_TIMEOUT_S + 30):
+    """Like submit_image, for image bytes that are already in memory (web uploads)."""
+    name = Path(name).name or "image"
+    report = {"image": name, "task_id": task_id, "ok": False, "output": None,
+              "worker_id": None, "processing_s": None, "sha256": None, "error": None}
+    try:
         if len(data) > config.MAX_PAYLOAD_BYTES:
             raise ValueError("image is larger than %d bytes" % config.MAX_PAYLOAD_BYTES)
 
@@ -73,7 +89,7 @@ def submit_image(image_path, task_id, host="127.0.0.1", port=config.COORDINATOR_
                 "task_id": task_id,
                 "task_type": "resize",
                 "params": {"width": width, "height": height},
-                "name": image_path.name,
+                "name": name,
                 "sha256": sha256_hex(data),
             }, data)
             del data
@@ -88,7 +104,7 @@ def submit_image(image_path, task_id, host="127.0.0.1", port=config.COORDINATOR_
             if not verify_payload(header, result):
                 raise RuntimeError("result corrupted in transfer")
 
-        output = output_path(out_dir, image_path)
+        output = output_path(out_dir, name)
         save_atomically(output, result)
         report.update(ok=True, output=str(output.resolve()), worker_id=header.get("worker_id"),
                       processing_s=header.get("processing_s"), sha256=sha256_hex(result))

@@ -29,14 +29,24 @@ python main.py coordinator                       # or: terminal only
 python main.py coordinator --scheduler round_robin
 ```
 
-It prints the command for the workers, e.g. `python main.py worker 192.168.1.20`.
-You can also find the IP with `ipconfig` (IPv4 address of the Wi-Fi adapter).
+It prints the command for the workers, e.g. `python main.py worker 192.168.1.20`, and the
+**web dashboard** address, e.g. `http://192.168.1.20:8080`. You can also find the IP with
+`ipconfig` (IPv4 address of the Wi-Fi adapter).
+
+**Web dashboard:** anyone on the same Wi-Fi opens `http://<coordinator-ip>:8080` in a browser
+(laptop or phone, nothing to install). It shows a 3D CPU chip whose lid is a live seismograph of
+the workers' heartbeats, plus live Workers, Heartbeat, and Tasks screens; scroll or use the menu.
+**Submit images** (or drag images onto the page) sends them to the workers, and finished images can
+be downloaded from the Tasks screen. Direct links: `/#workers`, `/#heartbeat`, `/#tasks`.
+The 3D view needs internet once to load Three.js; without it the live panels still work.
+Use `--web-port 8090` for another port or `--no-web` to turn it off. There is no login, so use it
+on your own network only.
 
 **Windows Firewall:** the first start shows "Allow Python on networks?". Tick **Private networks** and
 allow. If you missed it: Windows Security > Firewall & network protection > Allow an app through
 firewall > Python > Private. The Wi-Fi network itself must be set to **Private**
-(Settings > Network & internet > Wi-Fi > your network). Needed ports: TCP 5000 (tasks) and UDP 5001
-(discovery).
+(Settings > Network & internet > Wi-Fi > your network). Needed ports: TCP 5000 (tasks), TCP 8080
+(web dashboard), and UDP 5001 (discovery).
 
 **2. Mac worker**
 
@@ -76,7 +86,9 @@ Each result is `output/<name>_resized.png`. The summary lists which worker resiz
 
 1. `python -m pytest` on the coordinator: all tests pass.
 2. Start `python main.py coordinator --gui --scheduler round_robin`; point out the IP and scheduler.
-3. Start 3 workers on 3 laptops; they appear as **idle** with CPU, RAM, battery, and charging.
+   Open `http://<coordinator-ip>:8080` on a projector or phone: the 3D chip and its seismograph.
+3. Start 3 workers on 3 laptops; they appear as **idle** with CPU, RAM, battery, and charging,
+   and get one seismograph trace each on the chip.
 4. Submit a folder of ~20 images. Tasks go W1, W2, W3, W1, ... (Round-Robin); workers show **busy**.
 5. While it runs, close one worker's terminal (or turn off its Wi-Fi). The dashboard shows it as
    **failed**, the event log shows its task **requeued**, and the batch still completes.
@@ -95,7 +107,7 @@ Each result is `output/<name>_resized.png`. The summary lists which worker resiz
 | `compute/` | B (scheduler, recovery), C (tasks) | tasks, schedulers, failure handling |
 | `monitoring/` | D | psutil resource reporting |
 | `benchmark/` | C (runner), D (plots) | experiments and charts (`python -m benchmark.experiment_runner --list`) |
-| `gui/` | D | Tkinter dashboard |
+| `gui/` | D | Tkinter dashboard (`dashboard.py`), web dashboard (`web_server.py`, `web/index.html`) |
 | `tests/` | everyone | unit and smoke tests |
 | `docs/` | D | report, literature review |
 

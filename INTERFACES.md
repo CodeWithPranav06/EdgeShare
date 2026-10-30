@@ -19,6 +19,7 @@ Agree on these before coding. To change one, tell the team first and update this
 | Scheduler | `assign(tasks, workers, state=None) -> {task_id: worker_id}` in `compute/task_scheduler.py`; `state` is a dict the coordinator keeps between calls | B |
 | Eligibility | `eligibility(status) -> (ok, reason)`: not ok when CPU ≥ `MAX_CPU_PERCENT`, free RAM < `MIN_FREE_RAM_MB`, or on battery below `LOW_BATTERY_PERCENT`. Unknown values never exclude a worker | B |
 | Coordinator state | `TaskCoordinator.snapshot()` → `{strategy, uptime_s, workers, tasks, counts, events, event_count}` (plain data) | B with D |
+| Web dashboard (HTTP, `config.WEB_PORT`) | `GET /` page; `GET /api/state` → snapshot + `coordinator` info + `uploads`; `POST /api/submit?name=&size=` (body = image) → `202 {task_id}`; `GET /api/result/<task_id>` → PNG | D with A and B |
 | Run log row | `log_run(row)` in `benchmark/run_experiments.py`; columns in `COLUMNS` | C with D |
 | Settings | ports, intervals, timeouts, thresholds in `config.py` (owned by A) | everyone |
 

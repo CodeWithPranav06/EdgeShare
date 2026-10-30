@@ -1,5 +1,6 @@
 """Entry point.
   python main.py coordinator [--gui] [--scheduler round_robin|resource_weighted] [--port 5000]
+                             [--web-port 8080 | --no-web]
   python main.py worker <coordinator-ip> [worker-id] [--port 5000]
   python main.py worker --discover [worker-id]
   python main.py submit <image-or-folder> [--host <coordinator-ip>] [--size 512] [--port 5000]
@@ -34,8 +35,10 @@ def main():
 
         args = sys.argv[2:]
         gui = "--gui" in args
+        web = "--no-web" not in args
         strategy = _option(args, "--scheduler", config.SCHEDULER)
         port = int(_option(args, "--port", config.COORDINATOR_PORT))
+        web_port = int(_option(args, "--web-port", config.WEB_PORT))
         try:
             coordinator = TaskCoordinator(strategy)
         except ValueError as exc:
@@ -43,6 +46,10 @@ def main():
 
         port_hint = "" if port == config.COORDINATOR_PORT else " --port %d" % port
         print(f"[server] workers connect with: python main.py worker {local_ip()}{port_hint}")
+        if web:
+            from gui.web_server import start_web_dashboard
+            server, message = start_web_dashboard(coordinator, port, web_port)
+            print(f"[server] web dashboard: {message}" if server else f"[server] {message}")
         try:
             if gui:
                 from gui.dashboard import run_dashboard
