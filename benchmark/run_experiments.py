@@ -1,5 +1,5 @@
-"""Experiment runner (member C). TODO: run experiments E1-E6 from the outline,
-repeat each 5 times, and call log_run() for every run."""
+"""Run log (member C). The experiments themselves are in benchmark/experiment_runner.py,
+which calls log_run() for every run (python -m benchmark.experiment_runner --list)."""
 import csv
 import os
 

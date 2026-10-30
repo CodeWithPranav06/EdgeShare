@@ -1,4 +1,3 @@
-```python
 """Entry point.
   python main.py coordinator
   python main.py worker <coordinator-ip> [worker-id]
@@ -28,4 +27,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```

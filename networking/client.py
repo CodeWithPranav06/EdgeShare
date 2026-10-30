@@ -1,4 +1,3 @@
-```python
 """Worker-side TCP client for EdgeShare."""
 import socket
 
@@ -47,7 +46,7 @@ def worker_loop(host, port=config.COORDINATOR_PORT, worker_id="mac-worker"):
                     elif msg_type == "ACK":
                         print(f"[worker] Received ACK: {header}")
                         if "task_id" in header:
-                        print("[worker] Requesting next task...")
+                            print("[worker] Requesting next task...")
                             send_msg(sock, {"type": "STATUS"})
 
                     elif msg_type == "ERROR":
@@ -66,4 +65,3 @@ if __name__ == "__main__":
     host = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1"
     worker_id = sys.argv[2] if len(sys.argv) > 2 else "mac-worker"
     worker_loop(host, worker_id=worker_id)
-```

@@ -4,9 +4,9 @@ baseline_benchmark.py - time the SINGLE-LAPTOP baseline for resize, hash and mat
 This produces T_single for the speedup formula   Speedup = T_single / T_distributed.
 Everything runs on this one machine: no network, no splitting.
 
-Run (from the repo root, with image_processor.py next to this file):
+Run from the repo root:
 
-    python baseline_benchmark.py --images-dir data/images
+    python -m benchmark.baseline_benchmark --images-dir data/images
 
 Options:
     --tasks resize hash matmul     which tasks to time (default: all three)
@@ -41,7 +41,7 @@ from datetime import datetime
 import PIL
 import psutil
 
-import image_processor as ip
+from compute import image_processor as ip
 
 DEFAULT_SIZES = {"resize": [50, 100, 200, 500], "hash": [64, 128, 256, 512], "matmul": [100, 200, 300, 400]}
 QUICK_SIZES = {"resize": [10, 20], "hash": [16, 32], "matmul": [50, 100]}

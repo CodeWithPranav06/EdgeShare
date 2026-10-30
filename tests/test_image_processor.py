@@ -1,4 +1,4 @@
-"""Tests for image_processor.py. Run with:  python -m pytest test_image_processor.py"""
+"""Tests for image_processor.py. Run with:  python -m pytest tests/test_image_processor.py"""
 
 import io
 import random
@@ -6,7 +6,7 @@ import random
 import pytest
 from PIL import Image
 
-import image_processor as ip
+from compute import image_processor as ip
 
 
 def _make_images(folder, count=7):
