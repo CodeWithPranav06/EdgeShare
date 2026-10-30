@@ -278,6 +278,15 @@ class TaskCoordinator:
                         warn=True)
             return outcome
 
+    def release_task_data(self, task_id):
+        """Drop a finished task's payload and result bytes once they were delivered,
+        so a long-running coordinator does not keep every image in memory."""
+        with self.lock:
+            if task_id in self.tasks:
+                self.tasks[task_id]["payload"] = b""
+            if task_id in self.results:
+                self.results[task_id]["result"] = b""
+
     def results_in_task_order(self):
         """Return completed results in submission order."""
         with self.lock:
@@ -306,7 +315,7 @@ class TaskCoordinator:
     def _event(self, text, warn=False):
         self.events.append((time.time(), text))
         if warn:
-            print("[coordinator] " + text)
+            print("[coordinator] " + text + "\n", end="", flush=True)
 
     def snapshot(self):
         """A copy of the coordinator state for the dashboard (plain dicts and lists)."""
