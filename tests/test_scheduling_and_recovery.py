@@ -297,7 +297,7 @@ def test_snapshot_counts_and_events():
     workers = {w["worker_id"]: w for w in snap["workers"]}
     assert workers["W2"]["state"] == "busy" and workers["W2"]["tasks"] == ["T2"]
     assert workers["W1"]["completed"] == 1
-    assert any("submitted" in text for _, text in snap["events"])
+    assert any("submitted" in text for _, text, _ in snap["events"])
 
 
 @pytest.mark.parametrize("strategy", ["round_robin", "resource_weighted"])

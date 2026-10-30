@@ -52,7 +52,8 @@ class TaskCoordinator:
         self.results = {}
         self.assignments = {}
         self.pending_assignments = {}
-        self.events = deque(maxlen=200)
+        self.events = deque(maxlen=200)       # (time, text, warn), newest last
+        self.event_count = 0                  # events ever logged (the deque forgets old ones)
         self.started_at = time.time()
         self.lock = threading.RLock()
 
@@ -313,7 +314,8 @@ class TaskCoordinator:
         return running + scheduled
 
     def _event(self, text, warn=False):
-        self.events.append((time.time(), text))
+        self.events.append((time.time(), text, warn))
+        self.event_count += 1
         if warn:
             print("[coordinator] " + text + "\n", end="", flush=True)
 
@@ -362,4 +364,5 @@ class TaskCoordinator:
                 "tasks": tasks,
                 "counts": counts,
                 "events": list(self.events),
+                "event_count": self.event_count,
             }

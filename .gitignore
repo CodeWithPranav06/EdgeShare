@@ -17,3 +17,6 @@ data/*
 storage/results/*
 !storage/results/.gitkeep
 *.log
+output/
+output_test/
+results/

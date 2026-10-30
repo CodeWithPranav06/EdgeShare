@@ -244,7 +244,7 @@ def test_worker_dies_mid_batch_and_nothing_is_lost(tmp_path):
         runner.join(30)
         for worker in good:
             worker.kill()
-        events = [text for _, text in server.coordinator.events]
+        events = [text for _, text, _ in server.coordinator.events]
 
     reports = results["reports"]
     assert all(r["ok"] for r in reports), [r["error"] for r in reports]
