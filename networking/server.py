@@ -28,9 +28,10 @@ class Peer:
     """A registered worker connection. The lock makes sure only one thread writes
     to the socket at a time (handler thread, monitor thread, submit wake-ups)."""
 
-    def __init__(self, conn, worker_id):
+    def __init__(self, conn, worker_id, host=None):
         self.conn = conn
         self.worker_id = worker_id
+        self.host = host                  # worker's IP, used for coordinator failover
         self.lock = threading.Lock()
 
     def send(self, header, payload=b""):
@@ -45,6 +46,25 @@ def _shutdown(sock):
     except OSError:
         pass
     sock.close()
+
+
+def succession(registry, lock):
+    """Workers in the order they joined: who takes over if this coordinator dies.
+
+    Sent with every ACK, so each worker always holds a recent copy. A worker on this
+    same laptop shows up as 127.0.0.1, which other laptops cannot use, so it is
+    replaced by this laptop's LAN IP.
+    """
+    from networking.discovery import local_ip
+    with lock:
+        peers = list(registry.values())
+    order = []
+    for peer in peers:
+        host = peer.host
+        if not host or host.startswith("127.") or host == "::1":
+            host = local_ip()
+        order.append({"worker_id": peer.worker_id, "host": host})
+    return order
 
 
 def send_next_task(peer, coordinator):
@@ -107,7 +127,8 @@ def handle_worker(conn, registry, coordinator, lock, first_message=None, addr=No
                     peer.send({"type": "ERROR", "reason": "Not registered (timed out)"})
                     reason = "heartbeat after timeout"
                     return
-                peer.send({"type": "ACK", "worker_id": peer.worker_id})
+                peer.send({"type": "ACK", "worker_id": peer.worker_id,
+                           "successors": succession(registry, lock)})
 
             elif msg_type == "RESULT":
                 task_id = header.get("task_id")
@@ -156,7 +177,7 @@ def register_peer(conn, header, registry, coordinator, lock, addr=None):
         send_msg(conn, {"type": "ERROR", "reason": "worker_id is required"})
         return None
 
-    peer = Peer(conn, worker_id)
+    peer = Peer(conn, worker_id, addr[0] if addr else None)
     with peer.lock:                       # nobody may send a TASK before our ACK
         with lock:
             if worker_id in registry:
@@ -167,7 +188,8 @@ def register_peer(conn, header, registry, coordinator, lock, addr=None):
             registry[worker_id] = peer
         try:
             coordinator.register_worker(worker_id, header.get("status"))
-            send_msg(conn, {"type": "ACK", "worker_id": worker_id})
+            send_msg(conn, {"type": "ACK", "worker_id": worker_id,
+                            "successors": succession(registry, lock)})
         except OSError:
             with lock:
                 if registry.get(worker_id) is peer:

@@ -1,7 +1,7 @@
 """Entry point.
   python main.py coordinator [--gui] [--scheduler round_robin|resource_weighted] [--port 5000]
                              [--web-port 8080 | --no-web]
-  python main.py worker <coordinator-ip> [worker-id] [--port 5000]
+  python main.py worker <coordinator-ip> [worker-id] [--port 5000] [--no-failover]
   python main.py worker --discover [worker-id]
   python main.py submit <image-or-folder> [--host <coordinator-ip>] [--size 512] [--port 5000]
 
@@ -66,6 +66,8 @@ def main():
         from networking.client import worker_loop
 
         args = sys.argv[2:]
+        failover = "--no-failover" not in args
+        args = [a for a in args if a != "--no-failover"]
         port = _option(args, "--port")
         port = int(port) if port else None
         if args and args[0] == "--discover":
@@ -83,9 +85,9 @@ def main():
 
         try:
             if port is None:
-                worker_loop(host, worker_id=worker_id)
+                worker_loop(host, worker_id=worker_id, failover=failover)
             else:
-                worker_loop(host, port, worker_id=worker_id)
+                worker_loop(host, port, worker_id=worker_id, failover=failover)
         except KeyboardInterrupt:
             print("\n[worker] stopped")
 
