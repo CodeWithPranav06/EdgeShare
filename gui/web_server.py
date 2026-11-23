@@ -4,6 +4,7 @@ Started by `python main.py coordinator` next to the TCP server, sharing the same
 TaskCoordinator, so the page shows live backend state.
 
     GET  /                      the dashboard page (gui/web/index.html)
+    GET  /graphs                live graphs (gui/web/graphs.html): CPU, RAM, throughput, speedup...
     GET  /api/state             coordinator.snapshot() + server info + web upload results (JSON)
     POST /api/submit?name=&size=  body = image bytes; queued through the normal SUBMIT path
     GET  /api/result/<task_id>  the resized image of a web upload
@@ -24,6 +25,7 @@ from networking.discovery import local_ip
 from networking.submit import DEFAULT_SIZE, submit_bytes
 
 PAGE = Path(__file__).with_name("web") / "index.html"
+GRAPHS_PAGE = Path(__file__).with_name("web") / "graphs.html"
 MAX_SIZE_PX = 4096
 
 
@@ -100,6 +102,8 @@ def make_handler(dashboard):
             path = urlparse(self.path).path
             if path in ("/", "/index.html"):
                 self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+            elif path in ("/graphs", "/graphs.html"):
+                self._send(200, GRAPHS_PAGE.read_bytes(), "text/html; charset=utf-8")
             elif path == "/api/state":
                 self._json(200, dashboard.state())
             elif path == "/favicon.ico":

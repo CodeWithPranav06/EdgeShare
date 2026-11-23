@@ -151,3 +151,11 @@ def test_page_inserts_server_text_only_through_escaping():
     # every ${...} that prints a worker / task / upload / event field goes through esc()
     risky = re.findall(r"\$\{(?:w|t|u|e)\.(?:worker_id|reason|name|error|task_id|text|state)\}", html)
     assert risky == []
+
+
+def test_graphs_page_is_served(web):
+    _, base = web
+    status, headers, body = get(base + "/graphs")
+    assert status == 200 and headers["Content-Type"].startswith("text/html")
+    assert b"live graphs" in body and b"/api/state" in body
+    assert b'href="/graphs"' in get(base + "/")[2]

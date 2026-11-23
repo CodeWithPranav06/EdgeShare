@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EdgeShare · Live graphs</title>
+<style>
+:root {
+    --bg: #000; --card: #0d0d0f; --line: rgba(255,255,255,0.10); --text: #f4f4f5; --muted: #8b8b93;
+    --orange: #ff8a3d; --blue: #7fd4ff; --green: #46d97c; --yellow: #f2c14e; --red: #ff5a4f;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Outfit', 'Segoe UI', Helvetica, Arial, sans-serif; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+         padding: 22px 32px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(0,0,0,0.85);
+         backdrop-filter: blur(8px); z-index: 2; }
+h1 { font-weight: 300; font-size: 22px; letter-spacing: 0.04em; }
+h1 b { font-weight: 600; }
+.right { display: flex; align-items: center; gap: 18px; font-size: 13px; color: var(--muted); }
+a { color: var(--text); text-decoration: none; opacity: 0.75; }
+a:hover { opacity: 1; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 99px; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.pill.on i { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; padding: 24px 32px 0; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.kpi span { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.kpi b { display: block; font-size: 28px; font-weight: 400; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.kpi small { color: var(--muted); font-size: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 18px; padding: 18px 32px 40px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 12px; }
+.card h2 { font-size: 14px; font-weight: 600; letter-spacing: 0.02em; }
+.card p { font-size: 12px; color: var(--muted); margin: 4px 0 10px; }
+canvas { width: 100%; height: 220px; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; }
+.legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.demo { margin: 18px 32px 0; padding: 10px 14px; border: 1px dashed var(--yellow); color: var(--yellow);
+        border-radius: 10px; font-size: 13px; display: none; }
+@media (max-width: 600px) { header, .kpis, .grid { padding-left: 14px; padding-right: 14px; }
+                            .grid { grid-template-columns: 1fr; } .demo { margin: 14px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>EdgeShare</b> · live graphs</h1>
+  <div class="right">
+    <span class="pill" id="pill"><i></i><span id="pill-text">connecting…</span></span>
+    <a href="/">← 3D dashboard</a>
+  </div>
+</header>
+<div class="demo" id="demo">Demo mode: no coordinator found, so this page shows simulated workers. Run
+  <code>python main.py coordinator</code> and open <code>http://&lt;coordinator-ip&gt;:8080/graphs</code> for live data.</div>
+
+<section class="kpis">
+  <div class="kpi"><span>Live workers</span><b id="k-workers">–</b><small id="k-workers-sub"></small></div>
+  <div class="kpi"><span>Tasks done</span><b id="k-done">–</b><small id="k-done-sub"></small></div>
+  <div class="kpi"><span>Throughput</span><b id="k-tput">–</b><small>tasks / second</small></div>
+  <div class="kpi"><span>Speedup now</span><b id="k-speed">–</b><small>vs. one laptop</small></div>
+  <div class="kpi"><span>Avg task time</span><b id="k-lat">–</b><small>seconds per task</small></div>
+  <div class="kpi"><span>Retries / failed</span><b id="k-fail">–</b><small>recovery at work</small></div>
+</section>
+
+<section class="grid">
+  <div class="card"><h2>CPU usage per worker</h2><p>Percent, from each heartbeat (every 2 s).</p>
+    <canvas id="c-cpu"></canvas><div class="legend" id="l-cpu"></div></div>
+  <div class="card"><h2>Free RAM per worker</h2><p>MB. Below the threshold a worker is skipped.</p>
+    <canvas id="c-ram"></canvas><div class="legend" id="l-ram"></div></div>
+  <div class="card"><h2>Throughput</h2><p>Tasks completed per second (5 s moving average).</p>
+    <canvas id="c-tput"></canvas><div class="legend" id="l-tput"></div></div>
+  <div class="card"><h2>Live speedup</h2><p>Compute-seconds finished per wall-clock second: how many laptops' worth of work is being done right now.</p>
+    <canvas id="c-speed"></canvas><div class="legend" id="l-speed"></div></div>
+  <div class="card"><h2>Task queue</h2><p>Waiting vs. running tasks.</p>
+    <canvas id="c-queue"></canvas><div class="legend" id="l-queue"></div></div>
+  <div class="card"><h2>Average task time per worker</h2><p>Seconds per completed task. Slower laptops show taller bars.</p>
+    <canvas id="c-lat"></canvas><div class="legend" id="l-lat"></div></div>
+  <div class="card"><h2>Tasks completed per worker</h2><p>How the scheduler shared the work.</p>
+    <canvas id="c-share"></canvas><div class="legend" id="l-share"></div></div>
+  <div class="card"><h2>Battery per worker</h2><p>Percent. On battery below 20% a worker becomes unavailable.</p>
+    <canvas id="c-batt"></canvas><div class="legend" id="l-batt"></div></div>
+</section>
+
+<script>
+(function () {
+"use strict";
+const POLL_MS = 1000, HISTORY = 120, WINDOW_S = 5;
+const PALETTE = ["#7fd4ff", "#ff8a3d", "#46d97c", "#f2c14e", "#c084fc", "#ff5a4f", "#5eead4", "#f472b6"];
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const colourOf = {};              // worker_id -> colour, stable across refreshes
+function colour(id) {
+    if (!(id in colourOf)) colourOf[id] = PALETTE[Object.keys(colourOf).length % PALETTE.length];
+    return colourOf[id];
+}
+
+// history: time series sampled once per poll
+const hist = { t: [], cpu: {}, ram: {}, batt: {}, tput: [], speed: [], waiting: [], running: [] };
+const seenDone = new Set();       // task ids already counted as completed
+const doneLog = [];               // [time, processing_s] of recently completed tasks
+let demo = false, demoState = null;
+
+function push(series, value) { series.push(value); if (series.length > HISTORY) series.shift(); }
+function pushWorker(map, id, value) {
+    if (!map[id]) map[id] = new Array(hist.t.length - 1).fill(null);
+    push(map[id], value);
+}
+
+function ingest(s) {
+    const now = Date.now() / 1000;
+    push(hist.t, now);
+    const ids = new Set(s.workers.map(w => w.worker_id));
+    s.workers.forEach(w => {
+        const dead = w.state === "failed";
+        pushWorker(hist.cpu, w.worker_id, dead ? null : w.cpu_percent);
+        pushWorker(hist.ram, w.worker_id, dead ? null : w.free_ram_mb);
+        pushWorker(hist.batt, w.worker_id, dead ? null : w.battery_percent);
+    });
+    [hist.cpu, hist.ram, hist.batt].forEach(map => Object.keys(map).forEach(id => {
+        if (!ids.has(id)) push(map[id], null);
+    }));
+
+    s.tasks.forEach(t => {
+        if (t.state === "completed" && !seenDone.has(t.task_id)) {
+            seenDone.add(t.task_id);
+            doneLog.push([now, t.processing_s || 0]);
+        }
+    });
+    while (doneLog.length && doneLog[0][0] < now - WINDOW_S) doneLog.shift();
+    const elapsed = Math.min(WINDOW_S, Math.max(1, now - hist.t[0]));
+    push(hist.tput, doneLog.length / elapsed);
+    push(hist.speed, doneLog.reduce((a, d) => a + d[1], 0) / elapsed);
+    push(hist.waiting, (s.counts.pending || 0) + (s.counts.assigned || 0));
+    push(hist.running, s.counts.running || 0);
+    render(s);
+}
+
+// ---------------------------------------------------------------- drawing
+function setup(canvas) {
+    const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h, pad: { l: 44, r: 10, t: 10, b: 22 } };
+}
+
+function niceMax(v) {
+    if (!(v > 0)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(v))), m = v / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+
+function axes(g, max, unit) {
+    const { ctx, w, h, pad } = g;
+    ctx.font = "11px Outfit, Segoe UI, sans-serif";
+    ctx.fillStyle = "#8b8b93"; ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.t + (h - pad.t - pad.b) * (1 - i / 4);
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        const v = max * i / 4;
+        ctx.textAlign = "right";
+        ctx.fillText((v >= 100 ? v.toFixed(0) : +v.toFixed(2)) + (unit || ""), pad.l - 6, y + 4);
+    }
+}
+
+function lineChart(id, seriesList, opts) {
+    const g = setup($(id)), { ctx, w, h, pad } = g;
+    const all = seriesList.flatMap(s => s.data).filter(v => v != null);
+    const max = opts.max || niceMax(Math.max(...all, opts.minMax || 0) * 1.1);
+    axes(g, max, opts.unit);
+    ctx.textAlign = "left"; ctx.fillStyle = "#8b8b93";
+    ctx.fillText(`last ${HISTORY} s`, pad.l, h - 6);
+    const x = i => pad.l + (w - pad.l - pad.r) * i / (HISTORY - 1);
+    const y = v => pad.t + (h - pad.t - pad.b) * (1 - Math.min(v, max) / max);
+    seriesList.forEach(s => {
+        const off = HISTORY - s.data.length;
+        if (s.fill) {
+            ctx.beginPath(); let started = false;
+            s.data.forEach((v, i) => { if (v == null) return; const px = x(i + off);
+                started ? ctx.lineTo(px, y(v)) : (ctx.moveTo(px, h - pad.b), ctx.lineTo(px, y(v)), started = true); });
+            if (started) { ctx.lineTo(x(off + s.data.length - 1), h - pad.b); ctx.closePath();
+                ctx.fillStyle = s.colour + "22"; ctx.fill(); }
+        }
+        ctx.strokeStyle = s.colour; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.beginPath();
+        let pen = false;
+        s.data.forEach((v, i) => {
+            if (v == null) { pen = false; return; }
+            pen ? ctx.lineTo(x(i + off), y(v)) : ctx.moveTo(x(i + off), y(v)); pen = true;
+        });
+        ctx.stroke();
+    });
+    legend(id.replace("c-", "l-"), seriesList.map(s => {
+        const last = [...s.data].reverse().find(v => v != null);
+        return [s.label, s.colour, last == null ? "–" : (+last.toFixed(opts.digits ?? 1)) + (opts.unit || "")];
+    }));
+}
+
+function barChart(id, bars, opts) {
+    const g = setup($(id)), { ctx, w, h, pad } = g;
+    const max = niceMax(Math.max(...bars.map(b => b.value), 0.0001) * 1.15);
+    axes(g, max, opts.unit);
+    if (!bars.length) { ctx.textAlign = "center"; ctx.fillStyle = "#8b8b93";
+        ctx.fillText("no completed tasks yet", w / 2, h / 2); legend(id.replace("c-", "l-"), []); return; }
+    const slot = (w - pad.l - pad.r) / bars.length, bw = Math.min(56, slot * 0.6);
+    bars.forEach((b, i) => {
+        const bh = (h - pad.t - pad.b) * b.value / max, x0 = pad.l + slot * i + (slot - bw) / 2;
+        ctx.fillStyle = b.colour; ctx.fillRect(x0, h - pad.b - bh, bw, bh);
+        ctx.fillStyle = "#f4f4f5"; ctx.textAlign = "center";
+        ctx.fillText(+b.value.toFixed(opts.digits ?? 2) + (opts.unit || ""), x0 + bw / 2, h - pad.b - bh - 4);
+        ctx.fillStyle = "#8b8b93";
+        ctx.fillText(b.label.length > 12 ? b.label.slice(0, 11) + "…" : b.label, x0 + bw / 2, h - 6);
+    });
+    legend(id.replace("c-", "l-"), []);
+}
+
+function legend(id, items) {
+    $(id).innerHTML = items.map(([label, c, v]) =>
+        `<span><i style="background:${c}"></i>${esc(label)} <b style="color:#f4f4f5;font-weight:400">${esc(v)}</b></span>`).join("");
+}
+
+function workerSeries(map) {
+    return Object.keys(map).map(id => ({ label: id, colour: colour(id), data: map[id] }));
+}
+
+function render(s) {
+    const live = s.workers.filter(w => w.state !== "failed");
+    $("k-workers").textContent = live.length;
+    $("k-workers-sub").textContent = `${s.workers.length - live.length} failed · ${s.strategy}`;
+    $("k-done").textContent = `${s.counts.completed}/${s.counts.total}`;
+    $("k-done-sub").textContent = `${(s.counts.pending || 0) + (s.counts.assigned || 0)} waiting · ${s.counts.running || 0} running`;
+    $("k-tput").textContent = hist.tput[hist.tput.length - 1].toFixed(2);
+    $("k-speed").textContent = hist.speed[hist.speed.length - 1].toFixed(2) + "×";
+    const done = s.tasks.filter(t => t.state === "completed" && t.processing_s != null);
+    $("k-lat").textContent = done.length ? (done.reduce((a, t) => a + t.processing_s, 0) / done.length).toFixed(2) : "–";
+    const retries = s.tasks.reduce((a, t) => a + Math.max(0, (t.tried_by || []).length - 1), 0);
+    $("k-fail").textContent = `${retries} / ${s.counts.failed || 0}`;
+
+    lineChart("c-cpu", workerSeries(hist.cpu), { max: 100, unit: "%", digits: 0 });
+    lineChart("c-ram", workerSeries(hist.ram), { unit: "", digits: 0, minMax: 256 });
+    lineChart("c-batt", workerSeries(hist.batt), { max: 100, unit: "%", digits: 0 });
+    lineChart("c-tput", [{ label: "tasks/s", colour: "#46d97c", data: hist.tput, fill: true }], { digits: 2, minMax: 1 });
+    lineChart("c-speed", [{ label: "speedup", colour: "#ff8a3d", data: hist.speed, fill: true },
+                          { label: "one laptop", colour: "#8b8b93", data: hist.speed.map(() => 1) }],
+              { unit: "×", digits: 2, minMax: 2 });
+    lineChart("c-queue", [{ label: "waiting", colour: "#f2c14e", data: hist.waiting, fill: true },
+                          { label: "running", colour: "#7fd4ff", data: hist.running }], { digits: 0, minMax: 4 });
+
+    const per = {};
+    done.forEach(t => { (per[t.worker] = per[t.worker] || []).push(t.processing_s); });
+    barChart("c-lat", Object.keys(per).map(id => ({ label: id, colour: colour(id),
+        value: per[id].reduce((a, b) => a + b, 0) / per[id].length })), { unit: "s" });
+    barChart("c-share", s.workers.filter(w => w.completed).map(w => ({ label: w.worker_id,
+        colour: colour(w.worker_id), value: w.completed })), { digits: 0 });
+}
+
+// ------------------------------------------------------------- demo mode
+function makeDemo() {
+    const workers = [["laptop-asus", 8, 7800], ["mac-pavan", 8, 5200], ["hp-lab", 4, 2600]].map(([id, cores, ram], i) =>
+        ({ worker_id: id, cpu_count: cores, base: ram, cpu_percent: 10, free_ram_mb: ram,
+           battery_percent: 90 - i * 25, power_plugged: i === 0, state: "idle", completed: 0, speed: cores / 8 }));
+    return { strategy: "resource_weighted", workers, tasks: [], counts: {}, next: 0, t: 0 };
+}
+
+function demoTick() {
+    const d = demoState; d.t++;
+    if (d.t % 40 === 1) for (let i = 0; i < 24; i++)
+        d.tasks.push({ task_id: "img-" + (d.next++), state: "pending", worker: null, processing_s: null, tried_by: [] });
+    if (d.t === 70) d.workers[2].state = "failed";          // a worker drops out
+    if (d.t === 95) d.workers[2].state = "idle";            // ... and comes back
+    d.workers.forEach(w => {
+        if (w.state === "failed") { d.tasks.filter(t => t.worker === w.worker_id && t.state === "running")
+            .forEach(t => { t.state = "pending"; t.worker = null; }); return; }
+        let task = d.tasks.find(t => t.worker === w.worker_id && t.state === "running");
+        if (task && Math.random() < 0.55 * w.speed) {
+            task.state = "completed"; task.processing_s = +(0.6 / w.speed + Math.random() * 0.3).toFixed(2);
+            w.completed++; task = null;
+        }
+        if (!task) { task = d.tasks.find(t => t.state === "pending");
+            if (task) { task.state = "running"; task.worker = w.worker_id; task.tried_by.push(w.worker_id); } }
+        w.state = task ? "busy" : "idle";
+        const target = task ? 70 + Math.random() * 25 : 6 + Math.random() * 8;
+        w.cpu_percent = Math.round(w.cpu_percent + (target - w.cpu_percent) * 0.5);
+        w.free_ram_mb = Math.round(w.base - (task ? 600 : 0) - Math.random() * 120);
+        if (!w.power_plugged && d.t % 6 === 0) w.battery_percent = Math.max(5, w.battery_percent - 1);
+    });
+    const counts = { pending: 0, assigned: 0, running: 0, completed: 0, failed: 0 };
+    d.tasks.forEach(t => counts[t.state]++);
+    counts.total = d.tasks.length;
+    return { strategy: d.strategy, counts, tasks: d.tasks.map(t => ({ ...t })),
+             workers: d.workers.map(w => ({ ...w })) };
+}
+
+async function poll() {
+    let state = null;
+    if (!demo) {
+        try {
+            const r = await fetch("/api/state", { cache: "no-store" });
+            if (!r.ok) throw new Error(r.status);
+            state = await r.json();
+        } catch (e) {
+            if (!hist.t.length || new URLSearchParams(location.search).has("demo")) {
+                demo = true; demoState = makeDemo(); $("demo").style.display = "block";
+            }
+        }
+    }
+    if (demo) state = demoTick();
+    $("pill").classList.toggle("on", !!state);
+    $("pill-text").textContent = demo ? "demo data" : state ? "live" : "coordinator offline · retrying";
+    if (state) ingest(state);
+    setTimeout(poll, POLL_MS);
+}
+
+if (new URLSearchParams(location.search).has("demo")) { demo = true; demoState = makeDemo(); $("demo").style.display = "block"; }
+let lastState = null;
+const _ingest = ingest;
+ingest = function (s) { lastState = s; _ingest(s); };
+window.addEventListener("resize", () => { if (lastState) render(lastState); });
+poll();
+})();
+</script>
+</body>
+</html>
