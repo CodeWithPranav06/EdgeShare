@@ -373,7 +373,7 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
       <span class="nav-dot"></span>
       <a href="#tasks" class="nav-link">Tasks</a>
       <span class="nav-dot"></span>
-      <a href="/graphs" class="nav-ext">Graphs</a>
+      <a href="graphs.html" class="nav-ext">Graphs</a>
     </nav>
     <div class="header-actions">
       <div class="live-pill" id="live-pill"><i></i><span id="live-text">connecting…</span></div>
@@ -482,6 +482,73 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
         (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const fmt = (value, suffix, missing) => value == null ? (missing || "n/a") : value + (suffix || "");
 
+    // -------------------------------------------------------------- demo mode
+    // With no coordinator to talk to (the page opened on its own, or ?demo in the
+    // address), simulated laptops run the same story: tasks shared out, a worker
+    // drops and its task is requeued, then it comes back.
+    let demo = new URLSearchParams(location.search).has('demo');
+    const DEMO = { t: 0, next: 1, tasks: [], events: [], eventCount: 0, started: Date.now() / 1000,
+        workers: [['laptop-asus', 8, 7800, 88, true], ['mac-pavan', 8, 5200, 64, false], ['hp-lab', 4, 2600, 41, false]]
+            .map(([id, cores, ram, batt, plug]) => ({ worker_id: id, cpu_count: cores, base: ram, speed: cores / 8,
+                cpu_percent: 8, free_ram_mb: ram, battery_percent: batt, power_plugged: plug, state: 'idle',
+                completed: 0, beat: Math.random() * 2, down: false, tasks: [] })) };
+    const DEMO_NAMES = ['campus', 'sunset', 'lab-bench', 'circuit', 'library', 'canteen', 'robot-arm', 'motor-test',
+                        'sky', 'hostel', 'quad', 'workshop', 'poster', 'team-photo', 'stm32', 'oscilloscope'];
+
+    function demoEvent(text, warn) { DEMO.events.push([Date.now() / 1000, text, !!warn]); DEMO.eventCount++;
+                                     if (DEMO.events.length > 200) DEMO.events.shift(); }
+    function demoSubmit(names) {
+        names.forEach(name => DEMO.tasks.push({ task_id: 'T' + String(DEMO.next++).padStart(4, '0'), name,
+            task_type: 'resize', state: 'pending', worker: null, tried_by: [], attempts: 0, error: null, processing_s: null }));
+        demoEvent(`${names.length} task(s) submitted`);
+    }
+    function demoState() {
+        const d = DEMO, step = POLL_MS / 1000; d.t++;
+        if (d.t === 1) { d.workers.forEach(w => demoEvent("worker " + w.worker_id + " registered")); }
+        if (d.t % 45 === 3) demoSubmit(DEMO_NAMES.map(n => n + '.jpg'));
+        const hp = d.workers[2];
+        if (d.t % 90 === 30) {                       // a laptop drops off the Wi-Fi
+            hp.down = true; hp.state = 'failed';
+            const lost = d.tasks.filter(t => t.worker === hp.worker_id && t.state === 'running');
+            lost.forEach(t => { t.state = 'pending'; t.worker = null; });
+            demoEvent(`worker ${hp.worker_id} failed: no heartbeat for 6 s`, true);
+            if (lost.length) demoEvent(`task ${lost[0].task_id} requeued (attempt ${lost[0].attempts + 1})`, true);
+        }
+        if (d.t % 90 === 50) { hp.down = false; demoEvent(`worker ${hp.worker_id} registered`); }
+        d.workers.forEach(w => {
+            if (w.down) { w.cpu_percent = 0; return; }
+            w.beat += step; if (w.beat >= 2) w.beat -= 2;
+            let task = d.tasks.find(t => t.worker === w.worker_id && t.state === 'running');
+            if (task && Math.random() < 0.5 * w.speed) {
+                task.state = 'completed'; task.processing_s = 0.25 / w.speed + Math.random() * 0.2; w.completed++; task = null;
+            }
+            if (!task) {
+                task = d.tasks.find(t => t.state === 'pending');
+                if (task) { task.state = 'running'; task.worker = w.worker_id; task.attempts++; task.tried_by.push(w.worker_id); }
+            }
+            w.state = task ? 'busy' : 'idle';
+            w.tasks = task ? [task.task_id] : [];
+            const target = task ? 72 + Math.random() * 22 : 5 + Math.random() * 7;
+            w.cpu_percent = Math.round(w.cpu_percent + (target - w.cpu_percent) * 0.6);
+            w.free_ram_mb = Math.round(w.base - (task ? 450 : 0) - Math.random() * 90);
+            if (!w.power_plugged && d.t % 20 === 0) w.battery_percent = Math.max(22, w.battery_percent - 1);
+        });
+        const counts = { pending: 0, assigned: 0, running: 0, completed: 0, failed: 0 };
+        d.tasks.forEach(t => counts[t.state]++);
+        counts.total = d.tasks.length;
+        return {
+            strategy: 'resource_weighted', uptime_s: d.t * step, counts, event_count: d.eventCount,
+            events: d.events.slice(), tasks: d.tasks.map(t => ({ ...t, tried_by: t.tried_by.slice() })),
+            workers: d.workers.map(w => ({ worker_id: w.worker_id, state: w.down ? 'failed' : w.state,
+                reason: w.down ? 'no heartbeat for 6 s' : '', cpu_count: w.cpu_count, cpu_percent: w.cpu_percent,
+                free_ram_mb: w.free_ram_mb, battery_percent: w.battery_percent, power_plugged: w.power_plugged,
+                last_seen_s: w.down ? 6 + (d.t % 90 - 30) * step : w.beat, tasks: w.tasks.slice(), completed: w.completed })),
+            coordinator: { address: 'demo', port: 5000, output_dir: 'output/', heartbeat_interval_s: 2,
+                           heartbeat_timeout_s: 6, retry_limit: 3 },
+            uploads: {}
+        };
+    }
+
     // ------------------------------------------------------------------ titles
     function splitTitlesIntoChars() {
         document.querySelectorAll('.slide-title').forEach(title => {
@@ -501,14 +568,18 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
 
     // ---------------------------------------------------------------- polling
     async function poll() {
-        try {
-            const response = await fetch('/api/state', { cache: 'no-store' });
-            if (!response.ok) throw new Error(response.status);
-            applyState(await response.json());
-            ES.online = true;
-        } catch (err) {
-            ES.online = false;
+        if (!demo) {
+            try {
+                const response = await fetch('/api/state', { cache: 'no-store' });
+                if (!response.ok) throw new Error(response.status);
+                applyState(await response.json());
+                ES.online = true;
+            } catch (err) {
+                ES.online = false;
+                if (!ES.state) demo = true;          // never reached a coordinator: show the demo
+            }
         }
+        if (demo) { applyState(demoState()); ES.online = true; }
         renderPill();
         setTimeout(poll, POLL_MS);
     }
@@ -554,7 +625,10 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
         pill.classList.toggle('online', ES.online);
         pill.classList.toggle('offline', !ES.online);
         const s = ES.state;
-        if (!ES.online) {
+        if (demo && ES.state) {
+            const live = ES.state.workers.filter(w => w.state !== 'failed').length;
+            $('live-text').textContent = `demo · ${live} simulated workers · ${ES.state.counts.completed}/${ES.state.counts.total} done`;
+        } else if (!ES.online) {
             $('live-text').textContent = 'coordinator offline · retrying';
         } else if (s) {
             const live = s.workers.filter(w => w.state !== 'failed').length;
@@ -790,6 +864,12 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
         if (!images.length) { toast('No images in that selection'); return; }
         const size = parseInt($('size-input').value, 10);
         if (!(size >= 1 && size <= 4096)) { toast('Size must be 1 to 4096 pixels'); return; }
+        if (demo) {
+            demoSubmit(images.map(f => f.name));
+            toast(`Demo: queued ${images.length} image${images.length === 1 ? '' : 's'} on the simulated workers`, true);
+            scrollToFraction(NAV_TARGETS[3]);
+            return;
+        }
         let sent = 0;
         for (const file of images) {
             try {
