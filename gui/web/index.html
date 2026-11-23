@@ -89,6 +89,8 @@ body {
     opacity: 0.6;
 }
 .nav-link:hover, .nav-link.current { opacity: 1; }
+.nav-ext { color: #ffffff; text-decoration: none; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; font-weight: 500; opacity: 0.6; transition: opacity 0.3s; }
+.nav-ext:hover { opacity: 1; }
 .nav-dot { width: 3px; height: 3px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; }
 .header-actions { display: flex; align-items: center; gap: 18px; }
 .live-pill {
@@ -370,6 +372,8 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
       <a href="#heartbeat" class="nav-link">Heartbeat</a>
       <span class="nav-dot"></span>
       <a href="#tasks" class="nav-link">Tasks</a>
+      <span class="nav-dot"></span>
+      <a href="/graphs" class="nav-ext">Graphs</a>
     </nav>
     <div class="header-actions">
       <div class="live-pill" id="live-pill"><i></i><span id="live-text">connecting…</span></div>
