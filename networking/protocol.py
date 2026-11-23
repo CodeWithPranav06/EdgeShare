@@ -4,7 +4,7 @@ TCP is a byte stream, so every message is sent as:
     [4 bytes: header length][JSON header][payload bytes]
 The header always has "type" and "payload_size".
 
-Message types: REGISTER, ACK, STATUS, TASK, RESULT, HEARTBEAT, ERROR, SUBMIT
+Message types: REGISTER, ACK, STATUS, TASK, RESULT, HEARTBEAT, ERROR, SUBMIT, REPLICA
 TASK, RESULT and SUBMIT headers carry "sha256" of their payload; receivers check it
 with verify_payload() so corrupted transfers are detected.
 """
@@ -14,7 +14,8 @@ import struct
 
 import config
 
-MESSAGE_TYPES = {"REGISTER", "ACK", "STATUS", "TASK", "RESULT", "HEARTBEAT", "ERROR", "SUBMIT"}
+MESSAGE_TYPES = {"REGISTER", "ACK", "STATUS", "TASK", "RESULT", "HEARTBEAT", "ERROR", "SUBMIT",
+                 "REPLICA"}
 
 
 def _recv_exact(sock, n):

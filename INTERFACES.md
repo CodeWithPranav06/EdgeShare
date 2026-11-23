@@ -8,6 +8,7 @@ Agree on these before coding. To change one, tell the team first and update this
 | Message types | REGISTER, ACK, STATUS, TASK, RESULT, HEARTBEAT, ERROR, SUBMIT | A, B, C, D |
 | Register | `{type: REGISTER, worker_id, status}` → `ACK`, or `ERROR` if that `worker_id` is already connected | worker to A |
 | Heartbeat | `{type: HEARTBEAT, worker_id, status}` every `config.HEARTBEAT_INTERVAL_S`, also while a task runs → `ACK` | worker to A, B |
+| Queue replica | `{type: REPLICA, op: reset}`, `{op: add, task_id, task_type, params, name, sha256}` + payload, `{op: done, task_ids}`: the coordinator's unfinished tasks, kept on the first worker in the succession list | A to that worker |
 | Succession list | REGISTER and HEARTBEAT `ACK`s carry `successors: [{worker_id, host}, ...]` (workers in join order) | A to workers |
 | Task message header | `{type: TASK, task_id, task_type, params, sha256}` + payload bytes | B to worker |
 | Result message header | `{type: RESULT, task_id, processing_s, sha256}` + result bytes | worker to B |
@@ -59,5 +60,7 @@ Agree on these before coding. To change one, tell the team first and update this
   `FAILOVER_AFTER_S`, then walks the list: if the entry is itself, it starts a coordinator (TCP, web
   dashboard, discovery) and keeps working as its own worker; otherwise it waits up to `FAILOVER_WAIT_S`
   for that worker to start one and joins it, or moves to the next entry. Code: `networking/failover.py`.
-- Tasks queued on the dead coordinator are lost and must be submitted again. Turn it off with
-  `python main.py worker <ip> --no-failover`.
+- No lost work: `server.Replicator` keeps a copy of every unfinished task (with its data) on the first
+  worker in the list. When that worker takes over, it queues them again and saves their results in
+  `output/recovered/`. Only if the coordinator and that worker die together are queued tasks lost.
+- Turn failover off with `python main.py worker <ip> --no-failover`.
