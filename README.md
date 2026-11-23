@@ -96,7 +96,8 @@ Each result is `output/<name>_resized.png`. The summary lists which worker resiz
 6. Restart that worker: it registers again and gets work.
 6b. **Coordinator failover:** close the coordinator's terminal. About 10 s later the worker that joined
    first prints `this laptop is now the coordinator`, the other workers reconnect to it, and its web
-   dashboard runs at `http://<that-laptop-ip>:8080`. Submit images again to it (queued work is lost).
+   dashboard runs at `http://<that-laptop-ip>:8080`. Unfinished images are not lost: the new coordinator
+   finishes them and saves them in its `output/recovered/` folder.
 7. Unplug a laptop below 20% battery (or lower `LOW_BATTERY_PERCENT` for the demo): it becomes
    **unavailable** and is skipped while others are free.
 8. Restart with `--scheduler resource_weighted` and repeat: the stronger laptop gets more tasks.

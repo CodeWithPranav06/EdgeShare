@@ -34,7 +34,7 @@ def default_worker_id():
 class WorkerSession:
     """One connection to the coordinator."""
 
-    def __init__(self, sock, worker_id, status_fn=get_status, task_fn=run_task):
+    def __init__(self, sock, worker_id, status_fn=get_status, task_fn=run_task, replica=None):
         self.sock = sock
         self.worker_id = worker_id
         self.status_fn = status_fn
@@ -42,6 +42,7 @@ class WorkerSession:
         self.send_lock = threading.Lock()     # heartbeats and results share the socket
         self.stopped = threading.Event()
         self.successors = []                  # who takes over if the coordinator dies
+        self.replica = replica if replica is not None else {}   # task_id -> task copy
         self.registered = False
         self.busy = False                     # running a task (not reading the socket)
         self.last_heard = time.monotonic()
@@ -103,6 +104,20 @@ class WorkerSession:
                    "sha256": sha256_hex(result)}, result)
         return True
 
+    def handle_replica(self, header, payload):
+        """Keep the coordinator's unfinished tasks, to queue them again after a takeover."""
+        op = header.get("op")
+        if op == "reset":
+            self.replica.clear()
+        elif op == "add" and header.get("task_id") and verify_payload(header, payload):
+            self.replica[header["task_id"]] = {
+                "task_id": header["task_id"], "task_type": header.get("task_type"),
+                "params": header.get("params", {}), "name": header.get("name"),
+                "payload": payload}
+        elif op == "done":
+            for task_id in header.get("task_ids", []):
+                self.replica.pop(task_id, None)
+
     def run(self, interval=config.HEARTBEAT_INTERVAL_S):
         """Register, then process tasks until the connection closes."""
         self.register()
@@ -129,6 +144,9 @@ class WorkerSession:
                     else:
                         print(f"[worker] task {task_id} failed")
 
+                elif msg_type == "REPLICA":
+                    self.handle_replica(header, payload)
+
                 elif msg_type == "ERROR":
                     print(f"[worker] coordinator error: {header.get('reason')}")
 
@@ -145,6 +163,7 @@ def worker_loop(host, port=config.COORDINATOR_PORT, worker_id=None, reconnect=Tr
 
     worker_id = worker_id or default_worker_id()
     successors = []
+    replica = {}                              # coordinator's unfinished tasks, if we are next
     lost_since = None
     local = None                              # our own coordinator, after a takeover
     try:
@@ -154,7 +173,7 @@ def worker_loop(host, port=config.COORDINATOR_PORT, worker_id=None, reconnect=Tr
                 with socket.create_connection((host, port), timeout=10) as sock:
                     sock.settimeout(None)
                     print(f"[worker] connected to {host}:{port}")
-                    session = WorkerSession(sock, worker_id)
+                    session = WorkerSession(sock, worker_id, replica=replica)
                     session.run()
             except RegistrationRefused as exc:
                 print(f"[worker] registration refused: {exc}")
@@ -171,7 +190,9 @@ def worker_loop(host, port=config.COORDINATOR_PORT, worker_id=None, reconnect=Tr
             if (failover and local is None and successors
                     and time.monotonic() - lost_since >= config.FAILOVER_AFTER_S):
                 print("[worker] coordinator unreachable; choosing a new one")
-                new_host, new_local = fo.elect(worker_id, successors, port)
+                new_host, new_local = fo.elect(worker_id, successors, port,
+                                               tasks=list(replica.values()))
+                replica.clear()
                 if new_host is not None:
                     host, local, lost_since = new_host, new_local, None
                     continue

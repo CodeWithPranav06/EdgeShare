@@ -67,6 +67,72 @@ def succession(registry, lock):
     return order
 
 
+class Replicator:
+    """Keep a copy of every unfinished task on the worker that would take over.
+
+    The first worker in succession(...) becomes the coordinator if this one dies
+    (networking/failover.py). This thread sends it every queued or running task
+    (REPLICA op=add, with the payload) and tells it when tasks finish (op=done), so
+    after a takeover the new coordinator can queue them again: no work is lost.
+    """
+
+    def __init__(self, registry, coordinator, lock, interval=1.0):
+        self.registry = registry
+        self.coordinator = coordinator
+        self.lock = lock
+        self.interval = interval
+        self.target = None                # Peer holding the replica
+        self.sent = set()                 # task ids the target has
+        self.wake = threading.Event()
+
+    def _unfinished(self):
+        with self.coordinator.lock:
+            return [dict(self.coordinator.tasks[task_id], task_id=task_id)
+                    for task_id, state in self.coordinator.task_state.items()
+                    if state["state"] not in ("completed", "failed")]
+
+    def sync(self):
+        with self.lock:
+            peers = list(self.registry.values())
+        target = peers[0] if peers else None
+        if target is not self.target:
+            old, self.target, self.sent = self.target, target, set()
+            if old is not None:
+                try:
+                    old.send({"type": "REPLICA", "op": "reset"})
+                except OSError:
+                    pass
+            if target is not None:
+                target.send({"type": "REPLICA", "op": "reset"})
+                log(f"[server] replicating the task queue to {target.worker_id}")
+        if target is None:
+            return
+
+        unfinished = self._unfinished()
+        open_ids = {task["task_id"] for task in unfinished}
+        for task in unfinished:
+            if task["task_id"] in self.sent:
+                continue
+            payload = task.get("payload", b"")
+            target.send({"type": "REPLICA", "op": "add", "task_id": task["task_id"],
+                         "task_type": task.get("task_type"), "params": task.get("params", {}),
+                         "name": task.get("name"), "sha256": sha256_hex(payload)}, payload)
+            self.sent.add(task["task_id"])
+        finished = sorted(self.sent - open_ids)
+        if finished:
+            target.send({"type": "REPLICA", "op": "done", "task_ids": finished})
+            self.sent -= set(finished)
+
+    def loop(self, stop):
+        while not stop.is_set():
+            try:
+                self.sync()
+            except OSError:
+                self.target, self.sent = None, set()   # target died; pick the next one
+            self.wake.wait(self.interval)
+            self.wake.clear()
+
+
 def send_next_task(peer, coordinator):
     """Send the next task for this worker, if any. Returns True if one was sent."""
     task = coordinator.next_task(peer.worker_id)
@@ -307,6 +373,8 @@ def start_server(host=config.COORDINATOR_HOST,
     threading.Thread(target=monitor_workers,
                      args=(registry, coordinator, lock, stopped, monitor_interval),
                      daemon=True).start()
+    replicator = Replicator(registry, coordinator, lock)
+    threading.Thread(target=replicator.loop, args=(stopped,), daemon=True).start()
     if discovery:
         from networking.discovery import broadcast_loop
         threading.Thread(target=broadcast_loop, args=(stopped,), kwargs={"tcp_port": port},
@@ -324,7 +392,7 @@ def start_server(host=config.COORDINATOR_HOST,
 
             threading.Thread(
                 target=dispatch_connection,
-                args=(conn, registry, coordinator, lock, addr),
+                args=(conn, registry, coordinator, lock, addr, replicator.wake.set),
                 daemon=True
             ).start()
 
@@ -337,7 +405,7 @@ def start_server(host=config.COORDINATOR_HOST,
             _shutdown(peer.conn)
 
 
-def dispatch_connection(conn, registry, coordinator, lock, addr=None):
+def dispatch_connection(conn, registry, coordinator, lock, addr=None, replicate=None):
     """Distinguish image submissions from worker registrations."""
     conn.settimeout(None)
     try:
@@ -347,8 +415,11 @@ def dispatch_connection(conn, registry, coordinator, lock, addr=None):
         return
 
     if header.get("type") == "SUBMIT":
-        handle_submitter(conn, coordinator, lock, header, payload,
-                         wake=lambda: wake_workers(registry, coordinator, lock))
+        def wake():
+            if replicate:
+                replicate()
+            wake_workers(registry, coordinator, lock)
+        handle_submitter(conn, coordinator, lock, header, payload, wake=wake)
     else:
         handle_worker(
             conn, registry, coordinator, lock,
