@@ -8,6 +8,8 @@ TaskCoordinator, so the page shows live backend state.
     GET  /api/state             coordinator.snapshot() + server info + web upload results (JSON)
     POST /api/submit?name=&size=  body = image bytes; queued through the normal SUBMIT path
     GET  /api/result/<task_id>  the resized image of a web upload
+    POST /api/job?type=montecarlo|primes|matmul|image_filter|wordcount   run a demo job
+    GET  /api/job/<job_id>.png  the output image of an image_filter job
 
 Uploads go through networking.submit.submit_bytes() to the coordinator's own TCP port,
 exactly like `python main.py submit`, so results are also saved in the output folder.
@@ -37,6 +39,7 @@ class WebDashboard:
         self.coordinator_port = coordinator_port
         self.out_dir = Path(out_dir or config.OUTPUT_DIR).resolve()
         self.uploads = {}                     # task_id -> submit report
+        self.jobs = {}                        # job_id -> job summary (see networking/job.py)
         self.lock = threading.Lock()
 
     def state(self):
@@ -53,6 +56,7 @@ class WebDashboard:
                          "heartbeat_timeout_s": config.HEARTBEAT_TIMEOUT_S,
                          "retry_limit": config.TASK_RETRY_LIMIT},
             uploads=uploads,
+            jobs=self.job_list(),
         )
         return snapshot
 
@@ -71,6 +75,39 @@ class WebDashboard:
 
         threading.Thread(target=work, daemon=True).start()
         return task_id
+
+    def job_list(self):
+        with self.lock:
+            return [{k: v for k, v in job.items() if k != "output"} for job in self.jobs.values()]
+
+    def run_job(self, job_type, verify=True):
+        from networking.job import run_job
+        job_id = "job-" + uuid.uuid4().hex[:6]
+        with self.lock:
+            self.jobs[job_id] = {"id": job_id, "job": job_type, "state": "running",
+                                 "done": 0, "tasks": None}
+
+        def progress(done, total):
+            with self.lock:
+                self.jobs[job_id].update(done=done, tasks=total)
+
+        def work():
+            try:
+                summary = run_job(job_type, "127.0.0.1", self.coordinator_port,
+                                  verify=verify, on_progress=progress)
+                summary["state"] = "failed" if summary["failed"] else "done"
+            except Exception as exc:              # show the error on the page
+                summary = {"state": "failed", "errors": ["%s: %s" % (type(exc).__name__, exc)]}
+            with self.lock:
+                self.jobs[job_id].update(summary, id=job_id, has_output=bool(summary.get("output")))
+
+        threading.Thread(target=work, daemon=True).start()
+        return job_id
+
+    def job_output(self, job_id):
+        with self.lock:
+            job = self.jobs.get(job_id)
+            return job.get("output") if job else None
 
     def result_path(self, task_id):
         with self.lock:
@@ -102,6 +139,12 @@ def make_handler(dashboard):
             path = urlparse(self.path).path
             if path in ("/", "/index.html"):
                 self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+            elif path.startswith("/api/job/") and path.endswith(".png"):
+                data = dashboard.job_output(path[len("/api/job/"):-4])
+                if not data:
+                    self._json(404, {"error": "no output for that job"})
+                    return
+                self._send(200, data, "image/png")
             elif path in ("/graphs", "/graphs.html"):
                 self._send(200, GRAPHS_PAGE.read_bytes(), "text/html; charset=utf-8")
             elif path == "/api/state":
@@ -126,6 +169,14 @@ def make_handler(dashboard):
 
         def do_POST(self):
             url = urlparse(self.path)
+            if url.path == "/api/job":
+                from compute.jobs import JOB_TYPES
+                job_type = parse_qs(url.query).get("type", [""])[0]
+                if job_type not in JOB_TYPES:
+                    self._json(400, {"error": "type must be one of " + ", ".join(JOB_TYPES)})
+                    return
+                self._json(202, {"job_id": dashboard.run_job(job_type)})
+                return
             if url.path != "/api/submit":
                 self._json(404, {"error": "not found"})
                 return
