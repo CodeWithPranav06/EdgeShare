@@ -158,4 +158,4 @@ def test_graphs_page_is_served(web):
     status, headers, body = get(base + "/graphs")
     assert status == 200 and headers["Content-Type"].startswith("text/html")
     assert b"live graphs" in body and b"/api/state" in body
-    assert b'href="/graphs"' in get(base + "/")[2]
+    assert b'href="graphs.html"' in get(base + "/")[2]

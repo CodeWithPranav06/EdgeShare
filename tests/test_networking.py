@@ -264,6 +264,8 @@ def test_silent_worker_times_out_and_its_task_moves(tmp_path):
             image, "t-frozen", port=server.port, width=10, height=10, out_dir=tmp_path / "out")))
         runner.start()
         header, _ = recv_msg(silent)                   # it gets the task, then hangs
+        while header["type"] == "REPLICA":             # queue copy: it is first in line
+            header, _ = recv_msg(silent)
         assert header["type"] == "TASK"
 
         good = FakeWorker(server.port, "alive")
