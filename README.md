@@ -82,6 +82,33 @@ python main.py submit photo.jpg --host 192.168.1.20 --out results
 
 Each result is `output/<name>_resized.png`. The summary lists which worker resized each image.
 
+## Live graphs and jobs
+
+Open `http://<coordinator-ip>:8080/graphs` (or click **Graphs** on the dashboard) for live charts:
+CPU, RAM and battery per worker, throughput, live speedup, task queue, task time and tasks per worker.
+
+**Run a job** (buttons on that page, or from a terminal) splits one big computation into tasks for the
+workers, merges the answers, re-runs it on one laptop to check the answer is identical, and prints the
+measured speedup:
+
+| Job | What each task does | Data sent per task |
+|---|---|---|
+| `montecarlo` | throws random darts to estimate π | none (a seed) |
+| `matmul` | computes a block of rows of C = A × B | none (seed + row range) |
+| `primes` | counts primes in a number range | none (a range) |
+| `image_filter` | blurs / finds edges in one strip of an image | the strip |
+| `wordcount` | counts words in a text chunk (MapReduce) | the text |
+
+```bash
+python main.py job montecarlo                    # or: matmul, primes, image_filter, wordcount, all
+python main.py job image_filter --image photo.jpg --filter edges --host 192.168.1.20
+python main.py job primes --limit 200000000 --chunks 60
+```
+
+Heavy compute with little data (Monte Carlo, matrix multiply) gets faster with more laptops; light
+tasks with more data (word count, small prime ranges) can get slower because sending the work costs
+more than doing it. That break-even point is one of the project's results.
+
 ## Demo checklist (for the mentor)
 
 1. `python -m pytest` on the coordinator: all tests pass.

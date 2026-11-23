@@ -4,6 +4,7 @@
   python main.py worker <coordinator-ip> [worker-id] [--port 5000] [--no-failover]
   python main.py worker --discover [worker-id]
   python main.py submit <image-or-folder> [--host <coordinator-ip>] [--size 512] [--port 5000]
+  python main.py job <montecarlo|primes|matmul|image_filter|wordcount|all> [--host <ip>] [--chunks N]
 
 On a Mac, port 5000 is used by AirPlay Receiver: turn it off (System Settings >
 General > AirDrop & Handoff) or use another --port on the coordinator and every worker.
@@ -90,6 +91,10 @@ def main():
                 worker_loop(host, port, worker_id=worker_id, failover=failover)
         except KeyboardInterrupt:
             print("\n[worker] stopped")
+
+    elif sys.argv[1] == "job":
+        from networking.job import main as job_main
+        raise SystemExit(job_main(sys.argv[2:]))
 
     elif sys.argv[1] == "submit":
         from networking.submit import main as submit_main

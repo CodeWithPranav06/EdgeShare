@@ -34,9 +34,22 @@ a:hover { opacity: 1; }
 canvas { width: 100%; height: 220px; display: block; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; }
 .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.jobs { margin: 18px 32px 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.jobs h2 { font-size: 14px; font-weight: 600; } .jobs p { font-size: 12px; color: var(--muted); margin: 4px 0 12px; }
+.job-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.job-buttons button { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.25); border-radius: 99px;
+                      padding: 8px 16px; font: inherit; font-size: 13px; cursor: pointer; }
+.job-buttons button:hover { border-color: var(--orange); color: var(--orange); }
+.job-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.job-table th { text-align: left; font-weight: 400; color: var(--muted); font-size: 11px; text-transform: uppercase;
+                letter-spacing: 0.06em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.job-table td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .yes { color: var(--green); } .no { color: var(--red); }
+.bar { width: 120px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+.bar i { display: block; height: 100%; background: var(--orange); }
 .demo { margin: 18px 32px 0; padding: 10px 14px; border: 1px dashed var(--yellow); color: var(--yellow);
         border-radius: 10px; font-size: 13px; display: none; }
-@media (max-width: 600px) { header, .kpis, .grid { padding-left: 14px; padding-right: 14px; }
+@media (max-width: 600px) { .jobs { margin: 14px; overflow-x: auto; } header, .kpis, .grid { padding-left: 14px; padding-right: 14px; }
                             .grid { grid-template-columns: 1fr; } .demo { margin: 14px; } }
 </style>
 </head>
@@ -58,6 +71,19 @@ canvas { width: 100%; height: 220px; display: block; }
   <div class="kpi"><span>Speedup now</span><b id="k-speed">–</b><small>vs. one laptop</small></div>
   <div class="kpi"><span>Avg task time</span><b id="k-lat">–</b><small>seconds per task</small></div>
   <div class="kpi"><span>Retries / failed</span><b id="k-fail">–</b><small>recovery at work</small></div>
+</section>
+
+<section class="jobs">
+  <div class="jobs-head"><h2>Run a job</h2><p>Splits one big job into tasks for the workers, then checks the answer against one laptop and measures the real speedup.</p></div>
+  <div class="job-buttons">
+    <button data-job="montecarlo">Monte Carlo π</button>
+    <button data-job="matmul">Matrix multiply</button>
+    <button data-job="primes">Prime count</button>
+    <button data-job="image_filter">Image blur</button>
+    <button data-job="wordcount">Word count</button>
+  </div>
+  <table class="job-table"><thead><tr><th>Job</th><th>Progress</th><th>Answer</th><th>One laptop</th><th>Distributed</th><th>Speedup</th><th>Correct</th></tr></thead>
+    <tbody id="jobs-body"><tr><td colspan="7" class="muted">No jobs yet: press a button above.</td></tr></tbody></table>
 </section>
 
 <section class="grid">
@@ -132,6 +158,7 @@ function ingest(s) {
     push(hist.waiting, (s.counts.pending || 0) + (s.counts.assigned || 0));
     push(hist.running, s.counts.running || 0);
     render(s);
+    renderJobs(s.jobs);
 }
 
 // ---------------------------------------------------------------- drawing
@@ -253,6 +280,39 @@ function render(s) {
         colour: colour(w.worker_id), value: w.completed })), { digits: 0 });
 }
 
+// ------------------------------------------------------------------ jobs
+const JOB_NAMES = { montecarlo: "Monte Carlo π", matmul: "Matrix multiply", primes: "Prime count",
+                    image_filter: "Image blur", wordcount: "Word count" };
+function answerText(j) {
+    const a = j.answer;
+    if (!a) return esc((j.errors || []).join("; "));
+    if (j.job === "montecarlo") return `π ≈ ${a.pi_estimate} (${(a.samples / 1e6).toFixed(0)} M darts)`;
+    if (j.job === "primes") return `${a.count.toLocaleString()} primes below ${a.primes_below.toLocaleString()}`;
+    if (j.job === "matmul") return `${a.n}×${a.n} product, trace ${a.trace}`;
+    if (j.job === "image_filter") return `${esc(a.size)} ${esc(a.filter)}` + (j.has_output && !demo ? ` · <a href="/api/job/${esc(j.id)}.png" target="_blank">open image</a>` : "");
+    if (j.job === "wordcount") return `${a.words.toLocaleString()} words; top: ${a.top.slice(0, 3).map(t => esc(t[0])).join(", ")}`;
+    return esc(JSON.stringify(a));
+}
+function renderJobs(list) {
+    if (!list || !list.length) return;
+    $("jobs-body").innerHTML = list.slice().reverse().map(j => {
+        const pct = j.tasks ? Math.round(100 * j.done / j.tasks) : 0;
+        const prog = j.state === "running" ? `<span class="bar"><i style="width:${pct}%"></i></span>${j.done}/${j.tasks || "…"}`
+                   : j.state === "failed" ? `<span class="no">failed</span>` : `${j.tasks} tasks`;
+        const ok = j.correct == null ? "–" : j.correct ? '<span class="yes">✓ identical</span>' : '<span class="no">✗ differs</span>';
+        return `<tr><td>${esc(JOB_NAMES[j.job] || j.job)}</td><td>${prog}</td><td>${answerText(j)}</td>
+                <td>${j.single_laptop_s != null ? j.single_laptop_s.toFixed(2) + " s" : "–"}</td>
+                <td>${j.wall_s != null ? j.wall_s.toFixed(2) + " s" : "–"}</td>
+                <td>${j.speedup != null ? `<b style="font-weight:600;color:${j.speedup >= 1 ? "var(--green)" : "var(--yellow)"}">${j.speedup.toFixed(2)}×</b>` : "–"}</td><td>${ok}</td></tr>`;
+    }).join("");
+}
+document.querySelectorAll("[data-job]").forEach(b => b.addEventListener("click", async () => {
+    if (demo) { demoJob(b.dataset.job); return; }
+    try { const r = await fetch(`/api/job?type=${b.dataset.job}`, { method: "POST" });
+          if (!r.ok) throw new Error((await r.json()).error); }
+    catch (e) { alert("Could not start the job: " + e.message); }
+}));
+
 // ------------------------------------------------------------- demo mode
 function makeDemo() {
     const workers = [["laptop-asus", 8, 7800], ["mac-pavan", 8, 5200], ["hp-lab", 4, 2600]].map(([id, cores, ram], i) =>
@@ -261,6 +321,20 @@ function makeDemo() {
     return { strategy: "resource_weighted", workers, tasks: [], counts: {}, next: 0, t: 0 };
 }
 
+const DEMO_JOBS = {
+    montecarlo: { tasks: 40, one: 9.8, answer: { pi_estimate: 3.141713, samples: 20000000 } },
+    matmul: { tasks: 30, one: 7.4, answer: { n: 300, trace: 22429.359668 } },
+    primes: { tasks: 40, one: 0.9, answer: { count: 1857859, primes_below: 30000000 } },
+    image_filter: { tasks: 16, one: 0.8, answer: { size: "2400x1600", filter: "blur" } },
+    wordcount: { tasks: 24, one: 1.6, answer: { words: 1500000, top: [["the"], ["of"], ["and"]] } },
+};
+function demoJob(type) {
+    const spec = DEMO_JOBS[type], d = demoState;
+    const job = { id: "job-" + d.next, job: type, state: "running", done: 0, tasks: spec.tasks, start: d.t };
+    for (let i = 0; i < spec.tasks; i++)
+        d.tasks.push({ task_id: job.id + "-" + i, job: job.id, state: "pending", worker: null, processing_s: null, tried_by: [] });
+    d.next++; (d.jobs = d.jobs || []).push(job);
+}
 function demoTick() {
     const d = demoState; d.t++;
     if (d.t % 40 === 1) for (let i = 0; i < 24; i++)
@@ -286,8 +360,17 @@ function demoTick() {
     const counts = { pending: 0, assigned: 0, running: 0, completed: 0, failed: 0 };
     d.tasks.forEach(t => counts[t.state]++);
     counts.total = d.tasks.length;
+    (d.jobs || []).forEach(j => {
+        j.done = d.tasks.filter(t => t.job === j.id && t.state === "completed").length;
+        if (j.state === "running" && j.done === j.tasks) {
+            const spec = DEMO_JOBS[j.job], light = spec.one < 2;
+            Object.assign(j, { state: "done", answer: spec.answer, single_laptop_s: spec.one,
+                wall_s: light ? spec.one * 1.6 : spec.one / 2.6, correct: true });
+            j.speedup = j.single_laptop_s / j.wall_s;
+        }
+    });
     return { strategy: d.strategy, counts, tasks: d.tasks.map(t => ({ ...t })),
-             workers: d.workers.map(w => ({ ...w })) };
+             workers: d.workers.map(w => ({ ...w })), jobs: (d.jobs || []).map(j => ({ ...j })) };
 }
 
 async function poll() {
