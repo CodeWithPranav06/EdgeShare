@@ -21,6 +21,11 @@ LOW_BATTERY_PERCENT = 20          # it is on battery (not plugged in) and below 
 MAX_HEADER_BYTES = 1024 * 1024    # reject larger JSON headers (corrupt stream)
 MAX_PAYLOAD_BYTES = 200 * 1024 * 1024   # reject payloads larger than 200 MB
 
+# Coordinator failover: if the coordinator is gone, the workers pick a new one.
+COORDINATOR_SILENCE_S = 6         # worker treats the coordinator as dead after this much silence
+FAILOVER_AFTER_S = 8              # keep retrying the old coordinator this long before taking over
+FAILOVER_WAIT_S = 8               # how long to wait for each successor to come up before skipping it
+
 WEB_PORT = 8080                   # web dashboard: http://<coordinator-ip>:8080
 
 RESULTS_CSV = "storage/results/results.csv"
