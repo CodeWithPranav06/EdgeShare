@@ -153,9 +153,9 @@ def test_page_inserts_server_text_only_through_escaping():
     assert risky == []
 
 
-def test_graphs_page_is_served(web):
+def test_graphs_screen_is_part_of_the_3d_dashboard(web):
     _, base = web
-    status, headers, body = get(base + "/graphs")
-    assert status == 200 and headers["Content-Type"].startswith("text/html")
-    assert b"live graphs" in body and b"/api/state" in body
-    assert b'href="graphs.html"' in get(base + "/")[2]
+    page = get(base + "/")[2]
+    assert b'id="panel-5"' in page and b'href="#graphs"' in page and b"g3d-hist" in page
+    status, headers, body = get(base + "/graphs")          # old link forwards to screen 5
+    assert status == 200 and b"index.html#graphs" in body

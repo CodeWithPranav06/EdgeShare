@@ -84,10 +84,11 @@ Each result is `output/<name>_resized.png`. The summary lists which worker resiz
 
 ## Live graphs and jobs
 
-Open `http://<coordinator-ip>:8080/graphs` (or click **Graphs** on the dashboard) for live charts:
-CPU, RAM and battery per worker, throughput, live speedup, task queue, task time and tasks per worker.
+Scroll to the fifth screen of the dashboard, **Live Graphs** (or open `http://<coordinator-ip>:8080/#graphs`),
+for 3D charts you can drag to rotate: a ribbon per laptop over the last two minutes (CPU, RAM, battery,
+throughput, live speedup or queue), and 3D bars of the tasks each laptop finished (glow = average task time).
 
-**Run a job** (buttons on that page, or from a terminal) splits one big computation into tasks for the
+**Run a job** (buttons on that screen, or from a terminal) splits one big computation into tasks for the
 workers, merges the answers, re-runs it on one laptop to check the answer is identical, and prints the
 measured speedup:
 

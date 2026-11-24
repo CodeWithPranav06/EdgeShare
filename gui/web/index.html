@@ -19,7 +19,7 @@ html, body {
 }
 
 body {
-    min-height: 900vh;
+    min-height: 1100vh;
     font-family: 'Outfit', 'Segoe UI', Helvetica, Arial, sans-serif;
     color: #ffffff;
     overflow-x: hidden;
@@ -89,8 +89,6 @@ body {
     opacity: 0.6;
 }
 .nav-link:hover, .nav-link.current { opacity: 1; }
-.nav-ext { color: #ffffff; text-decoration: none; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; font-weight: 500; opacity: 0.6; transition: opacity 0.3s; }
-.nav-ext:hover { opacity: 1; }
 .nav-dot { width: 3px; height: 3px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; }
 .header-actions { display: flex; align-items: center; gap: 18px; }
 .live-pill {
@@ -144,7 +142,7 @@ body {
     width: calc(25vw - 80px);
 }
 
-#slide-2, #slide-3, #slide-4 { left: 60px; width: calc(50vw - 120px); }
+#slide-2, #slide-3, #slide-4, #slide-5 { left: 60px; width: calc(50vw - 120px); }
 
 .slide-title {
     font-family: 'Italiana', 'Didot', 'Bodoni 72', Georgia, serif;
@@ -212,6 +210,34 @@ body {
     display: flex; justify-content: space-between; gap: 12px;
 }
 .panel h3 + * { margin-bottom: 26px; }
+
+/* ---------- live graphs (screen 5) ---------- */
+.gkpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 16px; }
+.gkpis b { display: block; font-family: 'Italiana', Georgia, serif; font-weight: 400; font-size: 34px; line-height: 1;
+           color: #fff6ed; font-variant-numeric: tabular-nums; }
+.gkpis span { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9ca3af; }
+.g3d { position: relative; height: 300px; border: 1px solid rgba(255, 255, 255, 0.08);
+       background: radial-gradient(ellipse at 50% 30%, rgba(255, 138, 61, 0.06), transparent 70%); cursor: grab; }
+.g3d.bars { height: 230px; }
+.g3d:active { cursor: grabbing; }
+.g3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.g3d .lbl { position: absolute; transform: translate(-50%, -50%); font-size: 10px; letter-spacing: 1px; white-space: nowrap;
+            color: #d1d5db; pointer-events: none; text-shadow: 0 0 6px #000, 0 0 2px #000; }
+.g3d .lbl.axis { color: #6b7280; }
+.g3d .hint { position: absolute; right: 10px; bottom: 8px; font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+             color: #4b5563; pointer-events: none; }
+.g3d .none { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button, .job-btns button {
+    background: transparent; color: #d1d5db; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 99px;
+    padding: 5px 11px; font: inherit; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; }
+.tabs button.on { background: #fff6ed; color: #000; border-color: #fff6ed; }
+.tabs button:hover, .job-btns button:hover { border-color: #ff8a3d; }
+.job-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.jobs-table .ok { color: #46d97c; } .jobs-table .bad { color: #ff5a4f; }
+.jobs-table td b { font-weight: 600; }
+.jbar { display: inline-block; width: 70px; height: 4px; background: rgba(255, 255, 255, 0.1); vertical-align: middle; margin-right: 6px; }
+.jbar i { display: block; height: 100%; background: #ff8a3d; }
 .muted { color: #9ca3af; font-size: 13px; font-weight: 300; }
 
 .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
@@ -350,7 +376,7 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
         position: static; margin-left: 16px; width: calc(100vw - 32px); max-width: none;
     }
     #slide-1 .col-2 { display: none; }
-    #slide-2, #slide-3, #slide-4 { left: 16px; width: calc(100vw - 32px); }
+    #slide-2, #slide-3, #slide-4, #slide-5 { left: 16px; width: calc(100vw - 32px); }
     .slide-desc { font-size: 14px; }
     .panel { left: 16px; right: 16px; width: auto; top: 80px; bottom: 42%; padding: 16px; }
     .grid-lines { left: 8px; right: 8px; width: calc(100% - 16px); }
@@ -373,7 +399,7 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
       <span class="nav-dot"></span>
       <a href="#tasks" class="nav-link">Tasks</a>
       <span class="nav-dot"></span>
-      <a href="graphs.html" class="nav-ext">Graphs</a>
+      <a href="#graphs" class="nav-link">Graphs</a>
     </nav>
     <div class="header-actions">
       <div class="live-pill" id="live-pill"><i></i><span id="live-text">connecting…</span></div>
@@ -404,6 +430,11 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
     <h2 class="slide-title">Every <br>Task</h2>
     <p class="slide-desc">Drop images anywhere on this page. They are queued, shared between the workers, retried on another laptop if one fails, and saved on the coordinator.</p>
   </div>
+
+  <div class="slide" id="slide-5">
+    <h2 class="slide-title">Live <br>Graphs</h2>
+    <p class="slide-desc">Every heartbeat in three dimensions: a ribbon per laptop over the last two minutes, the work each one finished, and the speedup right now. Drag a graph to turn it.</p>
+  </div>
 </div>
 
 <section class="panel" id="panel-2" aria-label="Workers"><div id="workers-view"></div></section>
@@ -420,6 +451,26 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
   <div id="uploads-view" class="uploads"></div>
   <h3>Tasks</h3>
   <div id="tasks-view"></div>
+</section>
+
+<section class="panel" id="panel-5" aria-label="Live graphs">
+  <div class="gkpis" id="gkpis"></div>
+  <h3 style="margin-top:26px"><span>Last two minutes</span><span class="tabs" id="metric-tabs">
+    <button data-m="cpu" class="on">CPU</button><button data-m="ram">RAM</button><button data-m="battery">Battery</button>
+    <button data-m="throughput">Throughput</button><button data-m="speedup">Speedup</button><button data-m="queue">Queue</button>
+  </span></h3>
+  <div class="g3d" id="g3d-hist"><span class="hint">drag to rotate</span></div>
+  <h3><span>Work done per laptop</span><span id="bars-note"></span></h3>
+  <div class="g3d bars" id="g3d-bars"><span class="hint">height = tasks done · glow = avg task time</span></div>
+  <h3>Run a job</h3>
+  <div>
+    <div class="job-btns">
+      <button data-job="montecarlo">Monte Carlo π</button><button data-job="matmul">Matrix multiply</button>
+      <button data-job="primes">Prime count</button><button data-job="image_filter">Image blur</button>
+      <button data-job="wordcount">Word count</button>
+    </div>
+    <div id="jobs-view"><p class="muted">Each job is split into tasks for the workers, then run on one laptop too: the table shows whether the answers match and the real speedup.</p></div>
+  </div>
 </section>
 
 <div class="toasts" id="toasts"></div>
@@ -440,6 +491,7 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
       <div class="story-dash"><div class="story-dash-fill" id="dash-fill-2"></div></div>
       <div class="story-dash"><div class="story-dash-fill" id="dash-fill-3"></div></div>
       <div class="story-dash"><div class="story-dash-fill" id="dash-fill-4"></div></div>
+      <div class="story-dash"><div class="story-dash-fill" id="dash-fill-5"></div></div>
     </div>
   </div>
 </div>
@@ -458,9 +510,11 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
         idle: "#7fd4ff", busy: "#ff8a3d", unavailable: "#f2c14e", failed: "#ff5a4f",
         pending: "#9ca3af", assigned: "#ff8a3d", running: "#ff8a3d", completed: "#46d97c"
     };
-    const SLIDE_RANGES = [[-0.10, 0.16], [0.24, 0.46], [0.52, 0.74], [0.80, 1.05]];
-    const NAV_TARGETS = [0.0, 0.34, 0.62, 0.94];
-    const NAV_HASHES = ['#overview', '#workers', '#heartbeat', '#tasks'];
+    const SLIDE_RANGES = [[-0.10, 0.13], [0.19, 0.37], [0.42, 0.59], [0.64, 0.80], [0.85, 1.05]];
+    const NAV_TARGETS = [0.0, 0.28, 0.50, 0.72, 0.96];
+    const NAV_HASHES = ['#overview', '#workers', '#heartbeat', '#tasks', '#graphs'];
+    const PALETTE = ['#7fd4ff', '#ff8a3d', '#46d97c', '#f2c14e', '#c084fc', '#ff5a4f', '#5eead4', '#f472b6'];
+    const HISTORY = 120;               // graph points, one per poll -> 2 minutes
 
     // Shared with the 3D module.
     const ES = window.ES = {
@@ -469,7 +523,15 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
         state: null, online: false,
         signals: {},                   // worker_id -> {buf, state, cpu, ...}
         order: [],                     // worker ids in registration order
-        colours: STATE_COLOURS
+        colours: STATE_COLOURS,
+        palette: {},                   // worker_id -> colour, stable
+        metric: 'cpu',                 // which history the 3D ribbons show
+        hist: { t: [], cpu: {}, ram: {}, battery: {}, throughput: [], speedup: [], waiting: [], running: [] },
+        histVersion: 0
+    };
+    ES.colourOf = (id) => {
+        if (!(id in ES.palette)) ES.palette[id] = PALETTE[Object.keys(ES.palette).length % PALETTE.length];
+        return ES.palette[id];
     };
 
     let cursorX = window.innerWidth / 2, cursorY = window.innerHeight / 2;
@@ -502,6 +564,42 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
             task_type: 'resize', state: 'pending', worker: null, tried_by: [], attempts: 0, error: null, processing_s: null }));
         demoEvent(`${names.length} task(s) submitted`);
     }
+    const DEMO_JOBS = {
+        montecarlo: { tasks: 40, one: 9.8, answer: { pi_estimate: 3.141713, samples: 20000000 } },
+        matmul: { tasks: 30, one: 7.4, answer: { n: 300, trace: 22429.36 } },
+        primes: { tasks: 40, one: 0.9, answer: { count: 1857859, primes_below: 30000000 } },
+        image_filter: { tasks: 16, one: 0.8, answer: { size: '2400x1600', filter: 'blur' } },
+        wordcount: { tasks: 24, one: 1.6, answer: { words: 1500000, distinct: 104, top: [] } },
+    };
+    DEMO.jobs = [];
+    function demoJob(type) {
+        const spec = DEMO_JOBS[type], id = 'job-' + DEMO.next;
+        const names = Array.from({ length: spec.tasks }, (_, i) => type + '-' + i);
+        demoSubmit(names);
+        DEMO.tasks.slice(-spec.tasks).forEach(t => { t.job = id; t.task_type = type; });
+        DEMO.jobs.push({ id, job: type, state: 'running', done: 0, tasks: spec.tasks });
+    }
+    function demoJobsTick() {
+        DEMO.jobs.forEach(j => {
+            j.done = DEMO.tasks.filter(t => t.job === j.id && t.state === 'completed').length;
+            if (j.state === 'running' && j.done === j.tasks) {
+                const spec = DEMO_JOBS[j.job], light = spec.one < 2;
+                Object.assign(j, { state: 'done', answer: spec.answer, single_laptop_s: spec.one, correct: true,
+                                   wall_s: light ? spec.one * 1.6 : spec.one / 2.6 });
+                j.speedup = j.single_laptop_s / j.wall_s;
+            }
+        });
+        return DEMO.jobs.map(j => ({ ...j }));
+    }
+    async function startJob(type) {
+        if (demo) { demoJob(type); toast('Demo: ' + (JOB_NAMES[type] || type) + ' started on the simulated workers', true); return; }
+        try {
+            const response = await fetch('/api/job?type=' + encodeURIComponent(type), { method: 'POST' });
+            if (!response.ok) throw new Error((await response.json()).error || response.status);
+            toast((JOB_NAMES[type] || type) + ' started', true);
+        } catch (err) { toast('Could not start the job: ' + (err.message || err)); }
+    }
+
     function demoState() {
         const d = DEMO, step = POLL_MS / 1000; d.t++;
         if (d.t === 1) { d.workers.forEach(w => demoEvent("worker " + w.worker_id + " registered")); }
@@ -545,7 +643,7 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
                 last_seen_s: w.down ? 6 + (d.t % 90 - 30) * step : w.beat, tasks: w.tasks.slice(), completed: w.completed })),
             coordinator: { address: 'demo', port: 5000, output_dir: 'output/', heartbeat_interval_s: 2,
                            heartbeat_timeout_s: 6, retry_limit: 3 },
-            uploads: {}
+            uploads: {}, jobs: demoJobsTick()
         };
     }
 
@@ -617,6 +715,79 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
         renderWorkers(state);
         renderEvents(state);
         renderTasks(state);
+        recordHistory(state);
+        renderGraphPanel(state);
+    }
+
+    // ------------------------------------------------------------ live graphs
+    const seenDone = new Set();
+    const doneLog = [];                // [time, processing_s] of tasks finished in the window
+    function pushCapped(arr, value) { arr.push(value); if (arr.length > HISTORY) arr.shift(); }
+    function recordHistory(s) {
+        const h = ES.hist, now = Date.now() / 1000;
+        pushCapped(h.t, now);
+        const ids = new Set();
+        s.workers.forEach(w => {
+            ids.add(w.worker_id); ES.colourOf(w.worker_id);
+            const dead = w.state === 'failed';
+            [['cpu', w.cpu_percent], ['ram', w.free_ram_mb], ['battery', w.battery_percent]].forEach(([k, v]) => {
+                if (!h[k][w.worker_id]) h[k][w.worker_id] = new Array(h.t.length - 1).fill(null);
+                pushCapped(h[k][w.worker_id], dead || v == null ? null : v);
+            });
+        });
+        ['cpu', 'ram', 'battery'].forEach(k => Object.keys(h[k]).forEach(id => { if (!ids.has(id)) pushCapped(h[k][id], null); }));
+        s.tasks.forEach(t => {
+            if (t.state === 'completed' && !seenDone.has(t.task_id)) { seenDone.add(t.task_id); doneLog.push([now, t.processing_s || 0]); }
+        });
+        while (doneLog.length && doneLog[0][0] < now - 5) doneLog.shift();
+        const span = Math.min(5, Math.max(1, now - h.t[0]));
+        pushCapped(h.throughput, doneLog.length / span);
+        pushCapped(h.speedup, doneLog.reduce((a, d) => a + d[1], 0) / span);
+        pushCapped(h.waiting, (s.counts.pending || 0) + (s.counts.assigned || 0));
+        pushCapped(h.running, s.counts.running || 0);
+        ES.histVersion++;
+    }
+
+    const JOB_NAMES = { montecarlo: 'Monte Carlo π', matmul: 'Matrix multiply', primes: 'Prime count',
+                        image_filter: 'Image blur', wordcount: 'Word count' };
+    function jobAnswer(j) {
+        const a = j.answer;
+        if (!a) return esc((j.errors || []).join('; ') || 'working…');
+        if (j.job === 'montecarlo') return 'π ≈ ' + esc(a.pi_estimate);
+        if (j.job === 'primes') return esc(a.count.toLocaleString()) + ' primes below ' + esc(a.primes_below.toLocaleString());
+        if (j.job === 'matmul') return esc(a.n) + '×' + esc(a.n) + ' product';
+        if (j.job === 'image_filter') return esc(a.size) + ' ' + esc(a.filter) + (j.has_output && !demo
+            ? ' · <a href="/api/job/' + encodeURIComponent(j.id) + '.png" target="_blank">image</a>' : '');
+        if (j.job === 'wordcount') return esc(a.words.toLocaleString()) + ' words';
+        return esc(JSON.stringify(a));
+    }
+    function renderGraphPanel(s) {
+        const h = ES.hist, last = (arr) => arr.length ? arr[arr.length - 1] : 0;
+        const done = s.tasks.filter(t => t.state === 'completed' && t.processing_s != null);
+        const avg = done.length ? done.reduce((a, t) => a + t.processing_s, 0) / done.length : null;
+        const retries = s.tasks.reduce((a, t) => a + Math.max(0, (t.tried_by || []).length - 1), 0);
+        $('gkpis').innerHTML = [
+            [last(h.throughput).toFixed(2), 'tasks / second'], [last(h.speedup).toFixed(2) + '×', 'speedup now'],
+            [avg == null ? '–' : avg.toFixed(2) + 's', 'avg task time'],
+            [s.workers.filter(w => w.state !== 'failed').length, 'laptops live'],
+            [s.counts.completed + '/' + s.counts.total, 'tasks done'], [retries, 'retries'],
+        ].map(([n, label]) => `<div><b>${esc(n)}</b><span>${esc(label)}</span></div>`).join('');
+        $('bars-note').textContent = s.strategy.replace('_', '-') + ' scheduler';
+
+        const jobs = (s.jobs || []).slice().reverse();
+        if (!jobs.length) return;
+        $('jobs-view').innerHTML = '<table class="tasks jobs-table"><thead><tr><th>Job</th><th>Answer</th><th>1 laptop</th>' +
+            '<th>Shared</th><th>Speedup</th><th></th></tr></thead><tbody>' + jobs.map(j => {
+                const running = j.state === 'running';
+                const pct = j.tasks ? Math.round(100 * j.done / j.tasks) : 0;
+                return '<tr><td>' + esc(JOB_NAMES[j.job] || j.job) + '</td><td>' +
+                    (running ? `<span class="jbar"><i style="width:${pct}%"></i></span>${esc(j.done)}/${esc(j.tasks || '…')}` : jobAnswer(j)) +
+                    '</td><td>' + (j.single_laptop_s != null ? esc(j.single_laptop_s.toFixed(2)) + 's' : '–') +
+                    '</td><td>' + (j.wall_s != null ? esc(j.wall_s.toFixed(2)) + 's' : '–') +
+                    '</td><td>' + (j.speedup != null ? `<b style="color:${j.speedup >= 1 ? '#46d97c' : '#f2c14e'}">${esc(j.speedup.toFixed(2))}×</b>` : '–') +
+                    '</td><td>' + (j.correct == null ? (j.state === 'failed' ? '<span class="bad">failed</span>' : '')
+                        : j.correct ? '<span class="ok">✓ same</span>' : '<span class="bad">✗ differs</span>') + '</td></tr>';
+            }).join('') + '</tbody></table>';
     }
 
     // ----------------------------------------------------------------- render
@@ -787,9 +958,9 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
 
     // ---------------------------------------------------------- scroll & UI
     function updateSlides(scroll) {
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 1; i <= 5; i++) {
             const fill = $(`dash-fill-${i}`);
-            const progress = Math.max(0, Math.min(1, (scroll - (i - 1) * 0.25) / 0.25));
+            const progress = Math.max(0, Math.min(1, (scroll - (i - 1) * 0.2) / 0.2));
             fill.style.height = `${progress * 100}%`;
         }
         SLIDE_RANGES.forEach(([start, end], index) => {
@@ -905,9 +1076,15 @@ table.tasks { width: 100%; border-collapse: collapse; font-size: 12px; font-weig
         });
         window.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT') return;
-            const index = ['1', '2', '3', '4'].indexOf(e.key);
+            const index = ['1', '2', '3', '4', '5'].indexOf(e.key);
             if (index >= 0) scrollToFraction(NAV_TARGETS[index]);
         });
+
+        document.querySelectorAll('#metric-tabs button').forEach(b => b.addEventListener('click', () => {
+            document.querySelectorAll('#metric-tabs button').forEach(x => x.classList.toggle('on', x === b));
+            ES.metric = b.dataset.m; ES.histVersion++;
+        }));
+        document.querySelectorAll('[data-job]').forEach(b => b.addEventListener('click', () => startJob(b.dataset.job)));
 
         const input = $('file-input');
         $('submit-btn').addEventListener('click', () => input.click());
@@ -1510,5 +1687,300 @@ function animate() {
     renderer.render(scene, camera);
 }
 </script>
+<!-- 3D graphs for the Live Graphs screen: history ribbons and work bars, drawn with Three.js. -->
+<script type="module">
+import * as THREE from 'three';
+
+const ES = window.ES;
+const HISTORY = 120;
+const panel = document.getElementById('panel-5');
+
+function niceMax(v) {
+    if (!(v > 0)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(v))), m = v / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+const fmtNum = (v) => v >= 100 ? Math.round(v).toLocaleString() : String(+v.toFixed(2));
+
+// One small 3D stage: its own renderer, a camera you can drag around, and HTML labels
+// pinned to 3D points.
+class Stage {
+    constructor(el, opts) {
+        this.el = el;
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        el.prepend(this.renderer.domElement);
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(opts.fov || 34, 1, 0.1, 60);
+        this.target = new THREE.Vector3(...opts.target);
+        this.radius = opts.radius; this.yaw = opts.yaw; this.pitch = opts.pitch;
+        this.baseYaw = opts.yaw;
+        this.scene.add(new THREE.AmbientLight('#ffffff', 0.55));
+        const key = new THREE.DirectionalLight('#fff1e0', 2.2);
+        key.position.set(3, 6, 4);
+        this.scene.add(key);
+        const rim = new THREE.DirectionalLight('#7fd4ff', 0.8);
+        rim.position.set(-4, 2, -3);
+        this.scene.add(rim);
+        this.group = new THREE.Group();
+        this.scene.add(this.group);
+        this.labels = [];
+        this.dragging = false;
+        this.idleSince = 0;
+
+        el.addEventListener('pointerdown', (e) => {
+            this.dragging = true; this.lastX = e.clientX; this.lastY = e.clientY;
+            el.setPointerCapture(e.pointerId);
+        });
+        el.addEventListener('pointermove', (e) => {
+            if (!this.dragging) return;
+            this.yaw -= (e.clientX - this.lastX) * 0.008;
+            this.pitch = Math.min(1.25, Math.max(0.05, this.pitch + (e.clientY - this.lastY) * 0.006));
+            this.lastX = e.clientX; this.lastY = e.clientY;
+        });
+        const stop = () => { this.dragging = false; this.idleSince = performance.now(); };
+        el.addEventListener('pointerup', stop);
+        el.addEventListener('pointercancel', stop);
+        new ResizeObserver(() => this.resize()).observe(el);
+        this.resize();
+    }
+
+    resize() {
+        const w = this.el.clientWidth, h = this.el.clientHeight;
+        if (!w || !h) return;
+        this.renderer.setSize(w, h, false);
+        this.camera.aspect = w / h;
+        this.camera.updateProjectionMatrix();
+    }
+
+    clear() {
+        this.group.traverse((o) => {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) o.material.dispose();
+        });
+        this.group.clear();
+        this.labels.forEach((l) => l.el.remove());
+        this.labels = [];
+    }
+
+    label(text, x, y, z, cls, colour) {
+        const el = document.createElement('span');
+        el.className = 'lbl' + (cls ? ' ' + cls : '');
+        el.textContent = text;
+        if (colour) el.style.color = colour;
+        this.el.appendChild(el);
+        this.labels.push({ el, pos: new THREE.Vector3(x, y, z) });
+    }
+
+    render(time) {
+        // a slow sway when nobody is dragging, easing back to the base angle
+        if (!this.dragging && performance.now() - this.idleSince > 2500) {
+            const goal = this.baseYaw + Math.sin(time * 0.25) * 0.18;
+            this.yaw += (goal - this.yaw) * 0.02;
+        }
+        const r = this.radius;
+        this.camera.position.set(
+            this.target.x + r * Math.cos(this.pitch) * Math.sin(this.yaw),
+            this.target.y + r * Math.sin(this.pitch),
+            this.target.z + r * Math.cos(this.pitch) * Math.cos(this.yaw));
+        this.camera.lookAt(this.target);
+        this.renderer.render(this.scene, this.camera);
+        const w = this.el.clientWidth, h = this.el.clientHeight, v = new THREE.Vector3();
+        this.labels.forEach((l) => {
+            v.copy(l.pos).project(this.camera);
+            l.el.style.left = ((v.x + 1) / 2 * w) + 'px';
+            l.el.style.top = ((1 - v.y) / 2 * h) + 'px';
+            l.el.style.display = v.z < 1 ? '' : 'none';
+        });
+    }
+}
+
+// ---------------------------------------------------------------- ribbons
+const X0 = -2.2, X1 = 2.2, H = 1.7;
+const hist = new Stage(document.getElementById('g3d-hist'),
+    { target: [0.45, 0.6, 0], radius: 7.4, yaw: 0.5, pitch: 0.42 });
+let histDrawn = -1, histMetric = '';
+
+function metricSeries() {
+    const h = ES.hist, m = ES.metric;
+    const perWorker = (key) => Object.keys(h[key]).map((id) => ({ name: id, colour: ES.colourOf(id), data: h[key][id] }));
+    if (m === 'cpu') return { series: perWorker('cpu'), max: 100, unit: '%' };
+    if (m === 'battery') return { series: perWorker('battery'), max: 100, unit: '%' };
+    if (m === 'ram') {
+        const s = perWorker('ram');
+        return { series: s, max: niceMax(Math.max(256, ...s.flatMap((x) => x.data.filter((v) => v != null))) * 1.1), unit: ' MB' };
+    }
+    if (m === 'throughput') return { series: [{ name: 'tasks/s', colour: '#46d97c', data: h.throughput }],
+                                     max: niceMax(Math.max(1, ...h.throughput) * 1.15), unit: '/s' };
+    if (m === 'speedup') return { series: [{ name: 'speedup', colour: '#ff8a3d', data: h.speedup },
+                                           { name: '1 laptop', colour: '#6b7280', data: h.speedup.map(() => 1) }],
+                                  max: niceMax(Math.max(2, ...h.speedup) * 1.15), unit: '×' };
+    return { series: [{ name: 'waiting', colour: '#f2c14e', data: h.waiting }, { name: 'running', colour: '#7fd4ff', data: h.running }],
+             max: niceMax(Math.max(4, ...h.waiting, ...h.running) * 1.15), unit: '' };
+}
+
+function drawHistory() {
+    hist.clear();
+    const { series, max, unit } = metricSeries();
+    const lanes = Math.max(1, series.length), gap = 0.62;
+    const zOf = (i) => (i - (lanes - 1) / 2) * gap;
+    const zMin = zOf(0) - 0.45, zMax = zOf(lanes - 1) + 0.45;
+    const xOf = (i) => X0 + (X1 - X0) * i / (HISTORY - 1);
+
+    // floor and back wall grid
+    const grid = [];
+    for (let k = 0; k <= 4; k++) {
+        const y = H * k / 4;
+        grid.push(X0, y, zMin, X1, y, zMin);                  // back wall levels
+        if (k) hist.label(fmtNum(max * k / 4) + unit, X0 - 0.15, y, zMin, 'axis');
+    }
+    for (let k = 0; k <= 6; k++) {
+        const x = X0 + (X1 - X0) * k / 6;
+        grid.push(x, 0, zMin, x, 0, zMax, x, 0, zMin, x, H, zMin);
+    }
+    grid.push(X0, 0, zMax, X1, 0, zMax);
+    const gridGeo = new THREE.BufferGeometry();
+    gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(grid, 3));
+    hist.group.add(new THREE.LineSegments(gridGeo,
+        new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.08 })));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0, zMax - zMin),
+        new THREE.MeshStandardMaterial({ color: '#0b0b0e', roughness: 0.9, transparent: true, opacity: 0.85 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(0, -0.002, (zMin + zMax) / 2);
+    hist.group.add(floor);
+    hist.label('−2 min', X0, -0.12, zMax + 0.1, 'axis');
+    hist.label('now', X1, -0.12, zMax + 0.1, 'axis');
+
+    if (!series.length) { hist.label('waiting for workers…', 0, 0.6, 0, 'axis'); return; }
+
+    series.forEach((s, i) => {
+        const z = zOf(i), colour = new THREE.Color(s.colour), off = HISTORY - s.data.length;
+        const yOf = (v) => H * Math.min(v, max) / max;
+        const pos = [], col = [], line = [];
+        let lastPoint = null;
+        for (let k = 0; k < s.data.length; k++) {
+            const v = s.data[k];
+            if (v == null) continue;
+            const x = xOf(k + off), y = yOf(v);
+            line.push(x, y, z);
+            const next = s.data[k + 1];
+            if (next != null && k + 1 < s.data.length) {
+                const x2 = xOf(k + 1 + off), y2 = yOf(next);
+                // curtain quad from the floor to the line: two triangles
+                pos.push(x, 0, z, x, y, z, x2, y2, z,  x, 0, z, x2, y2, z, x2, 0, z);
+                const lo = colour.clone().multiplyScalar(0.08), hi = colour.clone().multiplyScalar(0.75);
+                [lo, hi, hi, lo, hi, lo].forEach((c) => col.push(c.r, c.g, c.b));
+            }
+            lastPoint = [x, y, z, v];
+        }
+        if (pos.length) {
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+            hist.group.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({
+                vertexColors: true, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })));
+        }
+        if (line.length >= 6) {
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(line, 3));
+            hist.group.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: colour })));
+        }
+        if (lastPoint) {
+            const dot = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12),
+                new THREE.MeshBasicMaterial({ color: colour }));
+            dot.position.set(lastPoint[0], lastPoint[1], lastPoint[2]);
+            dot.userData.pulse = true;
+            hist.group.add(dot);
+            hist.label(s.name + '  ' + fmtNum(lastPoint[3]) + unit, X1 + 0.75, 0.02, z, '', s.colour);
+        } else {
+            hist.label(s.name + ' · offline', X1 + 0.4, 0.1, z, 'axis');
+        }
+    });
+}
+
+// ------------------------------------------------------------------- bars
+const bars = new Stage(document.getElementById('g3d-bars'),
+    { target: [0, 0.6, 0], radius: 6.4, yaw: 0.32, pitch: 0.36 });
+const barMeshes = {};                 // worker_id -> mesh (kept, so heights animate)
+let barsKey = '';
+
+function drawBars() {
+    const s = ES.state;
+    const workers = s ? s.workers : [];
+    const key = workers.map((w) => w.worker_id).join('|');
+    const per = {};
+    (s ? s.tasks : []).forEach((t) => {
+        if (t.state === 'completed' && t.processing_s != null) (per[t.worker] = per[t.worker] || []).push(t.processing_s);
+    });
+    const maxDone = Math.max(1, ...workers.map((w) => w.completed || 0));
+    const avgs = workers.map((w) => per[w.worker_id] ? per[w.worker_id].reduce((a, b) => a + b, 0) / per[w.worker_id].length : null);
+    const maxAvg = Math.max(0.001, ...avgs.filter((a) => a != null));
+
+    if (key !== barsKey) {             // workers changed: rebuild the plinth and bars
+        barsKey = key;
+        bars.clear();
+        Object.keys(barMeshes).forEach((k) => delete barMeshes[k]);
+        const n = Math.max(1, workers.length), width = Math.max(3, n * 1.15);
+        const plinth = new THREE.Mesh(new THREE.BoxGeometry(width + 0.6, 0.08, 1.4),
+            new THREE.MeshStandardMaterial({ color: '#16110c', roughness: 0.5, metalness: 0.6 }));
+        plinth.position.y = -0.04;
+        bars.group.add(plinth);
+        workers.forEach((w, i) => {
+            const colour = new THREE.Color(ES.colourOf(w.worker_id));
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 0.5),
+                new THREE.MeshStandardMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.2,
+                                                 roughness: 0.35, metalness: 0.3 }));
+            mesh.position.x = (i - (n - 1) / 2) * 1.15;
+            mesh.scale.y = 0.001;
+            mesh.userData.height = 0.001;
+            bars.group.add(mesh);
+            barMeshes[w.worker_id] = mesh;
+        });
+        if (!workers.length) bars.label('waiting for workers…', 0, 0.6, 0, 'axis');
+    }
+    // labels change every poll: drop the old ones, keep the meshes
+    bars.labels.forEach((l) => l.el.remove());
+    bars.labels = [];
+    workers.forEach((w, i) => {
+        const mesh = barMeshes[w.worker_id];
+        if (!mesh) return;
+        const h = 1.6 * (w.completed || 0) / maxDone;
+        mesh.userData.height = Math.max(0.001, h);
+        mesh.userData.glow = avgs[i] == null ? 0.15 : 0.15 + 0.85 * avgs[i] / maxAvg;
+        mesh.material.opacity = w.state === 'failed' ? 0.35 : 1;
+        mesh.material.transparent = w.state === 'failed';
+        bars.label(w.worker_id + (w.state === 'failed' ? ' ✕' : ''), mesh.position.x, -0.22, 0.45, 'axis');
+        bars.label((w.completed || 0) + (avgs[i] == null ? '' : ' · ' + avgs[i].toFixed(2) + 's'),
+                   mesh.position.x, h + 0.2, 0, '', ES.colourOf(w.worker_id));
+    });
+}
+
+// ------------------------------------------------------------------ loop
+const clock = new THREE.Clock();
+let barsDrawn = -1;
+function loop() {
+    requestAnimationFrame(loop);
+    if (!panel.classList.contains('active')) return;
+    const time = clock.getElapsedTime();
+    if (ES.histVersion !== histDrawn) {
+        histDrawn = ES.histVersion;
+        drawHistory();
+        drawBars();
+    }
+    hist.group.children.forEach((o) => {
+        if (o.userData.pulse) o.scale.setScalar(1 + 0.35 * Math.sin(time * 4));
+    });
+    Object.values(barMeshes).forEach((m) => {
+        m.scale.y += (m.userData.height - m.scale.y) * 0.08;
+        m.position.y = m.scale.y / 2;
+        m.material.emissiveIntensity = (m.userData.glow || 0.2) * (0.8 + 0.2 * Math.sin(time * 2));
+    });
+    hist.render(time);
+    bars.render(time);
+}
+loop();
+</script>
+
 </body>
 </html>
